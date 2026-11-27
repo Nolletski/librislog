@@ -33,6 +33,7 @@
 	let matchingUploadId = $state<number | null>(null);
 	let message = $state<{ type: 'success' | 'error'; text: string } | null>(null);
 	let pollTimer: ReturnType<typeof setInterval> | null = null;
+	let hasActiveUpload = $derived(files.uploads.some((upload) => upload.status === 'queued' || upload.status === 'processing'));
 
 	function stopPolling() {
 		if (pollTimer !== null) {
@@ -227,10 +228,12 @@
 		<p class="text-xs text-base-content/70">{$_('profile.calibreWeb.connectFirst')}</p>
 	{:else}
 		<p class="text-xs text-base-content/60">{$_('profile.calibreWeb.fileHelp')}</p>
-		<label class="label cursor-pointer justify-start gap-2 py-0">
-			<input class="checkbox checkbox-sm" type="checkbox" bind:checked={replaceExisting} disabled={uploading} />
-			<span class="label-text text-xs">{$_('profile.calibreWeb.replaceExisting')}</span>
-		</label>
+		{#if files.linked}
+			<label class="label cursor-pointer justify-start gap-2 py-0">
+				<input class="checkbox checkbox-sm" type="checkbox" bind:checked={replaceExisting} disabled={uploading || hasActiveUpload} />
+				<span class="label-text text-xs">{$_('profile.calibreWeb.replaceExisting')}</span>
+			</label>
+		{/if}
 		<div class="flex flex-col sm:flex-row gap-2">
 			<input
 				class="file-input file-input-bordered file-input-sm w-full"
@@ -240,7 +243,7 @@
 				onchange={handleFileChange}
 				disabled={uploading}
 			/>
-			<button type="button" class="btn btn-primary btn-sm shrink-0" onclick={uploadEbook} disabled={!selectedFile || uploading}>
+			<button type="button" class="btn btn-primary btn-sm shrink-0" onclick={uploadEbook} disabled={!selectedFile || uploading || hasActiveUpload}>
 				{uploading ? $_('common.saving') : $_('profile.calibreWeb.upload')}
 			</button>
 		</div>
@@ -294,6 +297,9 @@
 						<span class="min-w-0 truncate">{upload.filename}</span>
 						<span class="badge badge-ghost badge-sm shrink-0">{statusLabel(upload.status)}</span>
 					</div>
+					{#if upload.error_message}
+						<p class="text-xs text-error break-words">{upload.error_message}</p>
+					{/if}
 				{/each}
 			</div>
 		{/if}
