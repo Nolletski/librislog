@@ -96,11 +96,12 @@ The integration therefore:
   session to avoid CWNG's login rate limits;
 - disables redirects on credential-bearing HTTP requests;
 - requires a public HTTPS hostname and rejects hosts resolving to non-public IPs;
-  **this check is not connection-pinned**: the HTTP transport performs its own
-  DNS resolution after validation, so DNS rebinding remains an SSRF security
-  blocker until a resolver/transport pins the validated public address while
-  retaining TLS hostname verification. Do not expose this configurable
-  endpoint to untrusted users before that is fixed;
+- resolves the configured hostname again when opening a CWNG session, validates
+  the complete result set, and pins the HTTP transport to those exact IP
+  addresses. The original hostname is retained for TLS SNI and certificate
+  verification. Unexpected destinations fail closed. This uses the
+  HTTPX/httpcore network-backend hook and is covered by a unit test; keep the
+  supported HTTPX/httpcore major versions compatible with this transport;
 - checks EPUB/PDF signatures and enforces the 100 MB upload limit;
 - never changes the Kobo `api_endpoint` token or any Kobo configuration.
 
@@ -109,11 +110,10 @@ stored CWNG credentials and session cookies undecryptable.
 
 ## Remaining work before deployment
 
-- Implement a connection-pinned DNS transport (or equivalent connection-level
-  destination enforcement) to close the DNS-rebinding/SSRF gap. The current
-  hostname pre-check alone is not sufficient.
-- Add route-level authorization/isolation tests and concurrency tests around
-  uploads and explicit mappings.
+- Validate the pinned DNS transport against the deployed runtime and
+  reverse-proxy route before enabling a real CWNG connection.
+- Expand route-level authorization/isolation tests and concurrent-upload tests
+  around uploads and explicit mappings.
 - Run the full backend, frontend, CLI, and Playwright test suites on the branch.
 - Validate a real connection, upload, task poll, explicit match, metadata sync,
   format replacement, and download against a non-production CWNG account.
