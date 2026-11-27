@@ -378,10 +378,13 @@ async def get_book_files(
             for item in remote_book.get("formats", []):
                 if not isinstance(item, dict):
                     continue
-                file_format = item.get("format")
+                raw_format = item.get("format")
                 download_path = item.get("download_url")
                 read_path = item.get("read_url")
-                if file_format not in {"EPUB", "PDF"} or not isinstance(download_path, str):
+                if not isinstance(raw_format, str) or not isinstance(download_path, str):
+                    continue
+                file_format = raw_format.upper()
+                if file_format not in {"EPUB", "PDF"}:
                     continue
                 parsed_download = urlsplit(download_path)
                 if parsed_download.scheme or parsed_download.netloc or not download_path.startswith("/"):
