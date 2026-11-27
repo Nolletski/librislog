@@ -33,8 +33,10 @@ available for review in the draft pull request. It has not been deployed.
   book drawer. The browser uses its own CWNG login session for those links.
 - Metadata sync is one-way from LibrisLog to CWNG: title, authors (when
   present), publisher, publication date, description, ISBN, and page count
-  when CWNG exposes a matching integer custom column named `pages` or
-  `page_count`. Existing non-ISBN identifiers are preserved.
+  when CWNG's book detail exposes a populated integer custom column named
+  `pages` or `page_count`. CWNG currently omits empty custom columns from that
+  detail response, so an empty page-count column cannot yet be discovered or
+  initialized by this integration. Existing non-ISBN identifiers are preserved.
 - Language and cover projection are not implemented. Reading status, dates,
   ratings, personal notes, acquisition state, and reading progress are never
   sent to CWNG.
@@ -60,8 +62,10 @@ The following behaviour was checked against the pinned upstream tag:
 - `GET /api/v1/tasks` returns task IDs, numeric status values, task messages,
   progress, and the CWNG display name associated with each task.
 - `POST /api/v1/books/{book_id}/metadata` supports selected catalogue
-  metadata fields, identifiers, and editable custom columns. Page count is
-  therefore projected only when a clearly named integer custom column exists.
+  metadata fields, identifiers, and editable custom columns. The current book
+  detail serializer exposes custom-column values only for columns that already
+  have a value; page count is therefore projected only when a clearly named
+  integer custom column is already populated.
 - CWNG's metadata editor accepts language display names in the active CWNG
   locale. The integration currently does not attempt to translate LibrisLog's
   ISO language code into that locale-specific display name.
