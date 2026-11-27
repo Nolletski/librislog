@@ -617,7 +617,8 @@
       "statusNeedsMatch": "Association du livre requise",
       "statusCompleted": "Terminé",
       "statusFailed": "Échec",
-      "uploadFailed": "Échec de l'import de l'ebook."
+      "uploadFailed": "Échec de l'import de l'ebook.",
+      "replaceExisting": "Remplacer le format existant dans Calibre-Web s'il est déjà présent"
     },
     "shareProfile": {
       "title": "Partager le profil",
