@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field as PydanticField
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
-from app.auth import encrypt_api_key
+from app.auth import encrypt_api_key, require_user
 from app.database import get_session
 from app.models import (
     Book,
@@ -22,7 +22,6 @@ from app.models import (
     CalibreWebUpload,
     User,
 )
-from app.auth import require_user
 from app.services.authors import load_authors_batch
 from app.services.calibre_web_client import (
     CalibreWebClient,
@@ -488,7 +487,7 @@ async def sync_book_metadata(
     try:
         async with CalibreWebClient(connection, session) as client:
             await client.get_book(link.calibre_book_id)
-            await _sync_metadata(client, session, connection, book, link)
+            await _sync_metadata(client, session, book, link)
         session.commit()
         return MetadataSyncResponse(synced=True)
     except CalibreWebError as exc:
