@@ -57,7 +57,12 @@ def test_normalize_calibre_web_url_rejects_private_dns(monkeypatch: pytest.Monke
         normalize_calibre_web_url("https://ebooks.example.com")
 
 
-def test_cw_client_logs_in_and_reuses_encrypted_session() -> None:
+def test_cw_client_logs_in_and_reuses_encrypted_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda *args, **kwargs: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 443))],
+    )
     requests: list[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -119,7 +124,13 @@ def test_cw_client_logs_in_and_reuses_encrypted_session() -> None:
     asyncio.run(run())
 
 
-def test_cw_client_refuses_account_without_upload_permission() -> None:
+def test_cw_client_refuses_account_without_upload_permission(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda *args, **kwargs: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 443))],
+    )
+
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/auth/csrf"):
             return httpx.Response(
