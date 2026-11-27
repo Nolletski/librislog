@@ -28,7 +28,7 @@
 	let selectedFile = $state<File | null>(null);
 	let replaceExisting = $state(false);
 	let fileInput: HTMLInputElement | undefined = $state();
-	let searchQuery = $state(book.title);
+	let searchQuery = $state('');
 	let candidates = $state<CalibreWebBookCandidate[]>([]);
 	let selectedCandidateId = $state('');
 	let matchingUploadId = $state<number | null>(null);
