@@ -177,11 +177,12 @@ def test_cw_client_refuses_account_without_upload_permission(monkeypatch: pytest
 
 def test_upload_task_correlation_uses_new_task_and_filename() -> None:
     tasks = [
-        {"task_id": "old", "taskMessage": "Upload: book.epub"},
-        {"task_id": "new", "taskMessage": "Upload done: book.epub"},
-        {"task_id": "other", "taskMessage": "Upload done: another.epub"},
+        {"task_id": "old", "user": "reader", "taskMessage": "Upload: book.epub"},
+        {"task_id": "wrong-user", "user": "admin", "taskMessage": "Upload done: book.epub"},
+        {"task_id": "new", "user": "reader", "taskMessage": "Upload done: book.epub"},
+        {"task_id": "other", "user": "reader", "taskMessage": "Upload done: another.epub"},
     ]
-    match = _task_for_upload(tasks, {"old", "other"}, "book.epub")
+    match = _task_for_upload(tasks, {"old", "other"}, "book.epub", "reader")
     assert match is not None
     assert match["task_id"] == "new"
 
