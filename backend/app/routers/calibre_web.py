@@ -63,6 +63,7 @@ class UploadRead(BaseModel):
     calibre_task_id: Optional[str] = None
     calibre_book_id: Optional[int] = None
     error_message: Optional[str] = None
+    metadata_sync_error: Optional[str] = None
     created_at: datetime
 
 
@@ -97,7 +98,10 @@ def _connection_read(connection: CalibreWebConnection | None) -> ConnectionRead:
     )
 
 
-def _upload_read(upload: CalibreWebUpload) -> UploadRead:
+def _upload_read(
+    upload: CalibreWebUpload,
+    metadata_sync_error: str | None = None,
+) -> UploadRead:
     return UploadRead(
         id=upload.id or 0,
         filename=upload.filename,
@@ -106,6 +110,7 @@ def _upload_read(upload: CalibreWebUpload) -> UploadRead:
         calibre_task_id=upload.calibre_task_id,
         calibre_book_id=upload.calibre_book_id,
         error_message=upload.error_message,
+        metadata_sync_error=metadata_sync_error,
         created_at=upload.created_at,
     )
 
@@ -161,7 +166,6 @@ def _metadata_payload(book: Book, authors: list[str]) -> dict:
 async def _sync_metadata(
     client: CalibreWebClient,
     session: Session,
-    connection: CalibreWebConnection,
     book: Book,
     link: CalibreWebBookLink,
 ) -> None:
@@ -440,7 +444,7 @@ async def match_uploaded_book(
     try:
         async with CalibreWebClient(connection, session) as client:
             await client.get_book(body.calibre_book_id)
-            await _sync_metadata(client, session, connection, book, link)
+            await _sync_metadata(client, session, book, link)
         upload.calibre_book_id = body.calibre_book_id
         upload.status = "completed"
         upload.updated_at = datetime.now(timezone.utc)
@@ -458,7 +462,7 @@ async def match_uploaded_book(
             session.add(upload)
             session.commit()
 
-    return _upload_read(upload)
+    return _upload_read(upload, metadata_sync_error=metadata_message)
 
 
 @router.post("/books/{book_id}/sync-metadata", response_model=MetadataSyncResponse)
