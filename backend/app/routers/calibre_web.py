@@ -211,6 +211,7 @@ def _metadata_payload(
     book: Book,
     authors: list[str],
     existing_identifiers: list[dict] | None = None,
+    existing_custom_columns: list[dict] | None = None,
 ) -> dict:
     """Project only catalogue metadata owned by LibrisLog.
 
@@ -225,6 +226,22 @@ def _metadata_payload(
     }
     if authors:
         payload["authors"] = " & ".join(authors)
+    if book.page_count > 0:
+        # Calibre stores page counts in user-defined columns, not a standard
+        # metadata field. Only update a clearly named integer page-count column.
+        for column in existing_custom_columns or []:
+            if not isinstance(column, dict):
+                continue
+            column_name = str(column.get("name") or "").strip().casefold().replace("-", "_")
+            column_label = str(column.get("label") or "").strip().casefold().replace("-", "_")
+            if (
+                column.get("datatype") in {"int", "integer"}
+                and (column_name in {"pages", "page_count", "page count"}
+                     or column_label in {"pages", "page_count", "page count"})
+                and isinstance(column.get("id"), int)
+            ):
+                payload[f"custom_column_{column['id']}"] = str(book.page_count)
+                break
     if book.isbn:
         # Keep CWNG identifiers such as ASIN/Goodreads intact while replacing
         # only the ISBN with LibrisLog's current catalogue value.
@@ -249,12 +266,14 @@ async def _sync_metadata(
     authors = authors_map.get(book.id) or []
     existing_book = await client.get_book(link.calibre_book_id)
     existing_identifiers = existing_book.get("identifiers", [])
+    existing_custom_columns = existing_book.get("custom_columns", [])
     result = await client.update_book_metadata(
         link.calibre_book_id,
         _metadata_payload(
             book,
             authors,
             existing_identifiers if isinstance(existing_identifiers, list) else [],
+            existing_custom_columns if isinstance(existing_custom_columns, list) else [],
         ),
     )
     errors = result.get("errors")
