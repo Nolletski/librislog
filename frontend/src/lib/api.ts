@@ -65,7 +65,8 @@ import type {
 	CalibreWebConnection,
 	CalibreWebUpload,
 	CalibreWebBookCandidate,
-	CalibreWebBookFiles
+	CalibreWebBookFiles,
+	CalibreWebBookLinkResult
 } from './types';
 import { apiKey, csrfToken } from './stores/auth';
 import { get } from 'svelte/store';
@@ -892,6 +893,13 @@ export const api = {
 
 		bookFiles(bookId: number): Promise<CalibreWebBookFiles> {
 			return request<CalibreWebBookFiles>(`/calibre-web/books/${bookId}/files`);
+		},
+
+		linkExistingBook(bookId: number, calibreBookId: number, libraryId = 'default'): Promise<CalibreWebBookLinkResult> {
+			return request<CalibreWebBookLinkResult>(`/calibre-web/books/${bookId}/link`, {
+				method: 'POST',
+				body: JSON.stringify({ calibre_book_id: calibreBookId, library_id: libraryId })
+			});
 		},
 
 		searchBooks(q: string): Promise<{ items: CalibreWebBookCandidate[] }> {
