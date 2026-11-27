@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import json
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -145,6 +146,24 @@ def _apply_task_status(upload: CalibreWebUpload, task: dict) -> None:
         error = task.get("error")
         upload.error_message = str(error)[:2000] if error else "Calibre-Web upload task did not complete."
     upload.updated_at = datetime.now(timezone.utc)
+
+
+def _validate_ebook_file(file: UploadFile, extension: str) -> bool:
+    """Check the container signature rather than trusting the supplied filename."""
+    try:
+        file.file.seek(0)
+        if extension == ".pdf":
+            return file.file.read(5) == b"%PDF-"
+        if extension == ".epub":
+            with zipfile.ZipFile(file.file) as archive:
+                if "mimetype" not in archive.namelist():
+                    return False
+                return archive.read("mimetype") == b"application/epub+zip"
+        return False
+    except (OSError, zipfile.BadZipFile, RuntimeError):
+        return False
+    finally:
+        file.file.seek(0)
 
 
 def _metadata_payload(book: Book, authors: list[str]) -> dict:
@@ -300,11 +319,15 @@ async def upload_ebook(
     extension = Path(filename).suffix.lower()
     if not filename or extension not in ALLOWED_EBOOK_FORMATS:
         raise HTTPException(status_code=415, detail="Only EPUB and PDF files are supported.")
-    data = await file.read(MAX_EBOOK_SIZE_BYTES + 1)
-    if not data:
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    file.file.seek(0)
+    if file_size == 0:
         raise HTTPException(status_code=400, detail="The uploaded file is empty.")
-    if len(data) > MAX_EBOOK_SIZE_BYTES:
+    if file_size > MAX_EBOOK_SIZE_BYTES:
         raise HTTPException(status_code=413, detail="The ebook exceeds the 100 MB upload limit.")
+    if not _validate_ebook_file(file, extension):
+        raise HTTPException(status_code=415, detail="The file content does not match a valid EPUB or PDF.")
 
     connection = _get_connection(session, current_user.id)
     link = session.exec(
@@ -324,13 +347,13 @@ async def upload_ebook(
                 if task.get("task_id") is not None
             }
             if link:
-                result = await client.add_book_format(link.calibre_book_id, filename, data)
+                result = await client.add_book_format(link.calibre_book_id, filename, file.file)
                 queued = result.get("queued")
                 if queued != filename:
                     raise CalibreWebError("Calibre-Web did not confirm the format upload.")
                 calibre_book_id = link.calibre_book_id
             else:
-                result = await client.upload_new_book(filename, data)
+                result = await client.upload_new_book(filename, file.file)
                 queued = result.get("queued") or []
                 errors = result.get("errors") or []
                 if filename not in queued:
