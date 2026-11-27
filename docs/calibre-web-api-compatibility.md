@@ -22,10 +22,13 @@ Current implementation:
   Session cookies are encrypted at rest; redirects are not followed.
 - A new CWNG upload is not linked automatically. LibrisLog waits for ingest
   completion and requires the user to confirm the CWNG book ID.
-- Metadata projection currently covers title, authors, publisher, publication
-  date, and description. Reading status, dates, rating, notes, and progress
-  remain exclusively in LibrisLog. Automatic re-projection after every
-  LibrisLog metadata edit is not implemented yet; a manual sync endpoint exists.
+- Metadata projection covers title, authors, publisher, publication date,
+  description, and ISBN. Existing non-ISBN CWNG identifiers are preserved.
+  Reading status, dates, rating, notes, and progress remain exclusively in
+  LibrisLog. Linked books are re-projected after LibrisLog book edits, and a
+  manual sync action is also available. Language, page count, and cover
+  projection are not implemented yet because their CWNG write semantics need
+  separate verification.
 - Deleting a LibrisLog book/user or disconnecting removes only local mapping,
   upload-history, and credential rows. It never deletes remote CWNG books/files.
 
@@ -208,8 +211,8 @@ written to CWNG by the first version.
 - Use one persistent server-side HTTP session per connection, with bounded
   timeouts, strict redirect handling, and sanitized errors. Re-authenticate
   only when the session is rejected, with backoff to avoid CWNG's login limits.
-- Do not persist CWNG cookies unless there is a demonstrated need. If persisted
-  later, encrypt them and define expiry/revocation behaviour.
+- Session cookies are persisted only in encrypted form and refreshed from
+  CWNG before use. They are never exposed to the frontend or written to logs.
 - Validate upload extensions and content signatures, enforce configurable size
   limits, and stream files rather than reading arbitrary uploads fully into RAM.
 - Do not fetch arbitrary remote cover URLs through the integration without
