@@ -708,3 +708,12 @@ export interface CalibreWebBookCandidate {
 	authors?: string | string[];
 	[key: string]: unknown;
 }
+
+export interface CalibreWebBookFiles {
+	configured: boolean;
+	linked: boolean;
+	calibre_book_id: number | null;
+	library_id: string | null;
+	metadata_synced_at: string | null;
+	uploads: CalibreWebUpload[];
+}
