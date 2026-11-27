@@ -15,6 +15,7 @@ from typing import BinaryIO
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
+from cryptography.fernet import InvalidToken
 from sqlmodel import Session
 
 from app.auth import decrypt_api_key, encrypt_api_key
@@ -99,6 +100,10 @@ class CalibreWebClient:
     async def open(self) -> None:
         if not self.connection.is_enabled:
             raise CalibreWebError("Calibre-Web connection is disabled.")
+        try:
+            self.connection.base_url = normalize_calibre_web_url(self.connection.base_url)
+        except ValueError as exc:
+            raise CalibreWebError("The configured Calibre-Web URL is no longer considered safe.") from exc
 
         self.http = httpx.AsyncClient(
             base_url=self.connection.base_url.rstrip("/") + "/",
@@ -122,7 +127,7 @@ class CalibreWebClient:
                     self.me = self._json_object(response)
                     self._persist_session()
                     return
-            except (CalibreWebError, ValueError):
+            except (CalibreWebError, ValueError, InvalidToken):
                 # Expired/invalid session: fall back to a fresh login below.
                 pass
 
@@ -194,12 +199,18 @@ class CalibreWebClient:
 
     async def _login(self) -> None:
         await self._refresh_csrf()
+        try:
+            password = decrypt_api_key(self.connection.password_encrypted)
+        except InvalidToken as exc:
+            raise CalibreWebError(
+                "The saved Calibre-Web password cannot be decrypted. Reconnect the account."
+            ) from exc
         response = await self._request(
             "POST",
             "api/v1/auth/login",
             json={
                 "username": self.connection.username,
-                "password": decrypt_api_key(self.connection.password_encrypted),
+                "password": password,
             },
             headers={
                 "X-CSRFToken": self.csrf_token,
