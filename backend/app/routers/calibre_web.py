@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field as PydanticField
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
@@ -356,6 +356,7 @@ async def search_calibre_books(
 async def upload_ebook(
     book_id: int,
     file: UploadFile = File(...),
+    replace_existing: bool = Form(False),
     current_user: User = Depends(require_user),
     session: Session = Depends(get_session),
 ) -> UploadRead:
@@ -379,6 +380,19 @@ async def upload_ebook(
         raise HTTPException(status_code=415, detail="The file content does not match a valid EPUB or PDF.")
 
     connection = _get_connection(session, current_user.id)
+    pending_same_name = session.exec(
+        select(CalibreWebUpload).where(
+            CalibreWebUpload.connection_id == connection.id,
+            CalibreWebUpload.filename == filename,
+            CalibreWebUpload.status.in_(["queued", "processing"]),
+        )
+    ).first()
+    if pending_same_name:
+        raise HTTPException(
+            status_code=409,
+            detail="An upload with this filename is still processing. Wait for it to finish before retrying.",
+        )
+
     link = session.exec(
         select(CalibreWebBookLink).where(
             CalibreWebBookLink.connection_id == connection.id,
@@ -396,6 +410,18 @@ async def upload_ebook(
                 if task.get("task_id") is not None
             }
             if link:
+                existing_book = await client.get_book(link.calibre_book_id)
+                existing_formats = {
+                    str(item).upper()
+                    for item in existing_book.get("formats", [])
+                    if isinstance(item, str)
+                }
+                file_format = extension.lstrip(".").upper()
+                if file_format in existing_formats and not replace_existing:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"This book already has a {file_format} format. Confirm replacement to overwrite it.",
+                    )
                 result = await client.add_book_format(link.calibre_book_id, filename, file.file)
                 queued = result.get("queued")
                 if queued != filename:
