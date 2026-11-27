@@ -620,7 +620,8 @@
       "uploadFailed": "电子书上传失败。",
       "replaceExisting": "如果 Calibre-Web 中已存在该格式，则替换它",
       "download": "下载",
-      "read": "阅读"
+      "read": "阅读",
+      "linkExisting": "关联现有 CWNG 书籍"
     },
     "shareProfile": {
       "title": "分享个人资料",
