@@ -617,7 +617,8 @@
       "statusNeedsMatch": "Necesita vincular el libro",
       "statusCompleted": "Completado",
       "statusFailed": "Error",
-      "uploadFailed": "Error al subir el libro electrónico."
+      "uploadFailed": "Error al subir el libro electrónico.",
+      "replaceExisting": "Reemplazar el formato existente en Calibre-Web si ya hay uno"
     },
     "shareProfile": {
       "title": "Compartir perfil",
