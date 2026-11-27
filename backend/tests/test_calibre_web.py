@@ -14,6 +14,7 @@ from app.auth import decrypt_api_key, encrypt_api_key
 from app.models import Book, CalibreWebConnection
 from app.routers.calibre_web import (
     _apply_task_status,
+    _book_formats,
     _metadata_payload,
     _task_for_upload,
     _validate_ebook_file,
@@ -205,6 +206,17 @@ def test_upload_status_mapping(stat_value: int, expected: str) -> None:
     )
     _apply_task_status(upload, {"task_id": "task-1", "stat": stat_value})
     assert upload.status == expected
+
+
+def test_cw_book_formats_accepts_serialized_format_objects() -> None:
+    assert _book_formats({
+        "formats": [
+            {"format": "EPUB", "size_bytes": 100},
+            {"format": "PDF", "size_bytes": 200},
+            "MOBI",
+            {"other": "ignored"},
+        ]
+    }) == {"EPUB", "PDF", "MOBI"}
 
 
 def test_catalogue_projection_excludes_reading_data() -> None:
