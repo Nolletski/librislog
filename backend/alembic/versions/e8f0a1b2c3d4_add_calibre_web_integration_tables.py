@@ -26,7 +26,6 @@ def upgrade() -> None:
         sa.Column("username", sa.String(length=255), nullable=False),
         sa.Column("password_encrypted", sa.Text(), nullable=False),
         sa.Column("session_cookie_encrypted", sa.Text(), nullable=True),
-        sa.Column("csrf_token_encrypted", sa.Text(), nullable=True),
         sa.Column("is_enabled", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column("last_verified_at", sa.DateTime(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
