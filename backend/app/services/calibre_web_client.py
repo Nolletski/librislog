@@ -14,8 +14,10 @@ from datetime import datetime, timezone
 from typing import BinaryIO
 from urllib.parse import urlsplit, urlunsplit
 
+import httpcore
 import httpx
 from cryptography.fernet import InvalidToken
+from httpcore._backends.auto import AutoBackend
 from sqlmodel import Session
 
 from app.auth import decrypt_api_key, encrypt_api_key
@@ -24,6 +26,68 @@ from app.models import CalibreWebConnection
 logger = logging.getLogger(__name__)
 
 REQUEST_TIMEOUT_SECONDS = 30.0
+
+
+def _resolve_public_addresses(host: str, port: int) -> tuple[str, ...]:
+    """Resolve a hostname once and return only validated public addresses."""
+    try:
+        resolved = tuple(dict.fromkeys(
+            str(ipaddress.ip_address(item[4][0]))
+            for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+        ))
+    except (OSError, ValueError) as exc:
+        raise ValueError("Calibre-Web hostname could not be resolved safely.") from exc
+    if not resolved or any(not ipaddress.ip_address(address).is_global for address in resolved):
+        raise ValueError("Calibre-Web hostname must resolve only to public IP addresses.")
+    return resolved
+
+
+class _PinnedDNSBackend(httpcore.AsyncNetworkBackend):
+    """Connect only to the public IPs validated for the configured CWNG host.
+
+    httpcore still receives the original hostname as the TLS server_hostname,
+    so certificate validation and SNI remain bound to the configured hostname.
+    The DNS lookup used by the socket connection is replaced with this fixed
+    address set, closing the validation/connection DNS-rebinding window.
+    """
+
+    def __init__(self, hostname: str, port: int, addresses: tuple[str, ...]):
+        self.hostname = hostname.rstrip(".").lower()
+        self.port = port
+        self.addresses = addresses
+        self.backend = AutoBackend()
+
+    async def connect_tcp(
+        self,
+        host: str,
+        port: int,
+        timeout: float | None = None,
+        local_address: str | None = None,
+        socket_options=None,
+    ):
+        if host.rstrip(".").lower() != self.hostname or port != self.port:
+            raise OSError("Calibre-Web transport refused an unexpected destination.")
+        last_error: Exception | None = None
+        for address in self.addresses:
+            try:
+                return await self.backend.connect_tcp(
+                    address,
+                    port,
+                    timeout=timeout,
+                    local_address=local_address,
+                    socket_options=socket_options,
+                )
+            except Exception as exc:
+                last_error = exc
+        if last_error is not None:
+            raise last_error
+        raise OSError("No validated Calibre-Web destination is available.")
+
+    async def connect_unix_socket(self, path: str, timeout: float | None = None, socket_options=None):
+        raise OSError("Unix sockets are not permitted for Calibre-Web connections.")
+
+    async def sleep(self, seconds: float) -> None:
+        await self.backend.sleep(seconds)
 
 
 class CalibreWebError(Exception):
@@ -67,15 +131,7 @@ def normalize_calibre_web_url(value: str) -> str:
     if not 1 <= port <= 65535:
         raise ValueError("Calibre-Web URL contains an invalid port.")
 
-    try:
-        resolved = {
-            ipaddress.ip_address(item[4][0])
-            for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
-        }
-    except OSError as exc:
-        raise ValueError("Calibre-Web hostname could not be resolved.") from exc
-    if not resolved or any(not address.is_global for address in resolved):
-        raise ValueError("Calibre-Web hostname must resolve only to public IP addresses.")
+    _resolve_public_addresses(host, port)
 
     path = parts.path.rstrip("/")
     return urlunsplit(("https", parts.netloc, path, "", ""))
@@ -112,12 +168,34 @@ class CalibreWebClient:
         except ValueError as exc:
             raise CalibreWebError("The configured Calibre-Web URL is no longer considered safe.") from exc
 
+        transport = self.transport
+        if transport is None:
+            parts = urlsplit(self.connection.base_url)
+            host = parts.hostname
+            if not host:
+                raise CalibreWebError("The configured Calibre-Web URL has no hostname.")
+            try:
+                port = parts.port or 443
+                pinned_addresses = _resolve_public_addresses(host, port)
+            except ValueError as exc:
+                raise CalibreWebError("The configured Calibre-Web hostname is no longer considered safe.") from exc
+
+            # HTTPX does not expose httpcore's network_backend constructor
+            # argument. Install the pinned backend on its standard transport
+            # and fail closed if a future HTTPX/httpcore version changes it.
+            transport = httpx.AsyncHTTPTransport(trust_env=False)
+            pool = getattr(transport, "_pool", None)
+            if pool is None or not hasattr(pool, "_network_backend"):
+                await transport.aclose()
+                raise CalibreWebError("The installed HTTP transport cannot enforce pinned DNS safely.")
+            pool._network_backend = _PinnedDNSBackend(host, port, pinned_addresses)
+
         self.http = httpx.AsyncClient(
             base_url=self.connection.base_url.rstrip("/") + "/",
             timeout=REQUEST_TIMEOUT_SECONDS,
             follow_redirects=False,
             trust_env=False,
-            transport=self.transport,
+            transport=transport,
         )
 
         if self.connection.session_cookie_encrypted:
