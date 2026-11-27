@@ -25,6 +25,7 @@
 	let matching = $state(false);
 	let syncingMetadata = $state(false);
 	let selectedFile = $state<File | null>(null);
+	let fileInput: HTMLInputElement | undefined = $state();
 	let searchQuery = $state(book.title);
 	let candidates = $state<CalibreWebBookCandidate[]>([]);
 	let selectedCandidateId = $state('');
@@ -108,6 +109,7 @@
 			const upload = await api.calibreWeb.uploadBook(book.id, selectedFile);
 			files = { ...files, uploads: [upload, ...files.uploads] };
 			selectedFile = null;
+			if (fileInput) fileInput.value = '';
 			if (upload.status === 'needs_match') {
 				matchingUploadId = upload.id;
 				void searchCandidates();
@@ -125,6 +127,7 @@
 		if (searchQuery.trim().length < 2) return;
 		searching = true;
 		try {
+			candidates = [];
 			const result = await api.calibreWeb.searchBooks(searchQuery.trim());
 			candidates = result.items;
 			selectedCandidateId = candidates.length === 1 ? String(candidates[0].id) : '';
@@ -227,6 +230,7 @@
 				class="file-input file-input-bordered file-input-sm w-full"
 				type="file"
 				accept=".epub,.pdf,application/epub+zip,application/pdf"
+				bind:this={fileInput}
 				onchange={handleFileChange}
 				disabled={uploading}
 			/>
