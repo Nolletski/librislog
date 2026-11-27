@@ -679,3 +679,32 @@ export type DataImportEvent =
 			failures: Array<{ row: number; error: string; data: Record<string, unknown> }>;
 	  }
 	| { event: 'error'; message: string };
+
+export interface CalibreWebConnection {
+	configured: boolean;
+	base_url: string | null;
+	username: string | null;
+	is_enabled: boolean;
+	last_verified_at: string | null;
+	can_upload?: boolean;
+	can_edit_metadata?: boolean;
+}
+
+export interface CalibreWebUpload {
+	id: number;
+	filename: string;
+	file_format: string;
+	status: 'queued' | 'processing' | 'needs_match' | 'completed' | 'failed' | string;
+	calibre_task_id: string | null;
+	calibre_book_id: number | null;
+	error_message: string | null;
+	metadata_sync_error?: string | null;
+	created_at: string;
+}
+
+export interface CalibreWebBookCandidate {
+	id: number;
+	title: string;
+	authors?: string | string[];
+	[key: string]: unknown;
+}
