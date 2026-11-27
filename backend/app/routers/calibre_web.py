@@ -523,6 +523,19 @@ async def match_uploaded_book(
     if existing:
         raise HTTPException(status_code=409, detail="This LibrisLog book is already linked to Calibre-Web.")
 
+    # Verify that the selected ID is actually readable by this CWNG account
+    # before persisting a durable mapping. A failed lookup must never create a
+    # link that points to an inaccessible or nonexistent book.
+    try:
+        async with CalibreWebClient(connection, session) as client:
+            await client.get_book(body.calibre_book_id)
+    except CalibreWebError as exc:
+        session.rollback()
+        raise HTTPException(
+            status_code=422,
+            detail="The selected Calibre-Web book does not exist or is not accessible to this account.",
+        ) from exc
+
     link = CalibreWebBookLink(
         connection_id=connection.id,
         librislog_book_id=book.id,
@@ -539,7 +552,6 @@ async def match_uploaded_book(
     metadata_message = None
     try:
         async with CalibreWebClient(connection, session) as client:
-            await client.get_book(body.calibre_book_id)
             await _sync_metadata(client, session, book, link)
         upload.calibre_book_id = body.calibre_book_id
         upload.status = "completed"
@@ -550,7 +562,7 @@ async def match_uploaded_book(
     except CalibreWebError as exc:
         session.rollback()
         metadata_message = str(exc)
-        # Keep the explicit durable link. Metadata can be retried separately.
+        # Keep the verified explicit link. Metadata can be retried separately.
         upload = session.get(CalibreWebUpload, upload_id)
         if upload:
             upload.calibre_book_id = body.calibre_book_id
