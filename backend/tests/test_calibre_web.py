@@ -23,6 +23,8 @@ from app.routers.calibre_web import (
 from app.services.calibre_web_client import (
     CalibreWebClient,
     CalibreWebError,
+    _PinnedDNSBackend,
+    _resolve_public_addresses,
     normalize_calibre_web_url,
 )
 
@@ -54,6 +56,42 @@ def test_normalize_calibre_web_url_requires_public_https(monkeypatch: pytest.Mon
         normalize_calibre_web_url("https://127.0.0.1")
     with pytest.raises(ValueError, match="invalid port"):
         normalize_calibre_web_url("https://ebooks.example.com:invalid")
+
+
+def test_pinned_dns_backend_connects_to_validated_ip_not_hostname() -> None:
+    class FakeBackend:
+        def __init__(self):
+            self.connected_host = None
+
+        async def connect_tcp(self, host, port, **kwargs):
+            self.connected_host = host
+            return "stream"
+
+        async def sleep(self, seconds):
+            return None
+
+    async def run() -> None:
+        backend = _PinnedDNSBackend("ebooks.example.com", 443, ("8.8.8.8",))
+        fake = FakeBackend()
+        backend.backend = fake  # type: ignore[assignment]
+        assert await backend.connect_tcp("ebooks.example.com", 443) == "stream"
+        assert fake.connected_host == "8.8.8.8"
+        with pytest.raises(OSError, match="unexpected destination"):
+            await backend.connect_tcp("127.0.0.1", 443)
+
+    asyncio.run(run())
+
+
+def test_resolver_returns_only_public_addresses(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda *args, **kwargs: [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 443)),
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("1.1.1.1", 443)),
+        ],
+    )
+    assert _resolve_public_addresses("ebooks.example.com", 443) == ("8.8.8.8", "1.1.1.1")
 
 
 def test_normalize_calibre_web_url_rejects_private_dns(monkeypatch: pytest.MonkeyPatch) -> None:
