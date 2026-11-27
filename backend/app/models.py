@@ -477,6 +477,89 @@ class ImportMapping(SQLModel, table=True):
     )
 
 
+
+class CalibreWebConnection(SQLModel, table=True):
+    """Server-side CWNG credentials and endpoint mapped to one LibrisLog user."""
+
+    __tablename__ = "calibre_web_connection"
+    __table_args__ = (
+        sa.UniqueConstraint("user_id", name="uq_calibre_web_connection_user_id"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    base_url: str = Field(max_length=500)
+    username: str = Field(max_length=255)
+    password_encrypted: str = Field(sa_column=Column(sa.Text, nullable=False))
+    is_enabled: bool = Field(default=True, nullable=False)
+    last_verified_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(UtcDateTime, nullable=True),
+    )
+    created_at: datetime = Field(
+        default_factory=utcnow,
+        sa_column=Column(UtcDateTime, default=utcnow, nullable=False),
+    )
+    updated_at: datetime = Field(
+        default_factory=utcnow,
+        sa_column=Column(UtcDateTime, default=utcnow, onupdate=utcnow, nullable=False),
+    )
+
+
+class CalibreWebBookLink(SQLModel, table=True):
+    """Durable link between a LibrisLog book and a CWNG library book."""
+
+    __tablename__ = "calibre_web_book_link"
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "connection_id", "librislog_book_id",
+            name="uq_calibre_web_book_link_connection_librislog_book",
+        ),
+        sa.UniqueConstraint(
+            "connection_id", "library_id", "calibre_book_id",
+            name="uq_calibre_web_book_link_connection_library_calibre_book",
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    connection_id: int = Field(foreign_key="calibre_web_connection.id", index=True)
+    librislog_book_id: int = Field(foreign_key="book.id", index=True)
+    library_id: str = Field(default="default", max_length=255)
+    calibre_book_id: int = Field(index=True)
+    linked_at: datetime = Field(
+        default_factory=utcnow,
+        sa_column=Column(UtcDateTime, default=utcnow, nullable=False),
+    )
+    metadata_synced_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(UtcDateTime, nullable=True),
+    )
+
+
+class CalibreWebUpload(SQLModel, table=True):
+    """Tracks one ebook upload or format attachment without storing ebook bytes."""
+
+    __tablename__ = "calibre_web_upload"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    connection_id: int = Field(foreign_key="calibre_web_connection.id", index=True)
+    librislog_book_id: int = Field(foreign_key="book.id", index=True)
+    filename: str = Field(max_length=500)
+    file_format: str = Field(max_length=16)
+    status: str = Field(default="queued", max_length=32, index=True)
+    calibre_task_id: Optional[str] = Field(default=None, max_length=128)
+    calibre_book_id: Optional[int] = Field(default=None, index=True)
+    error_message: Optional[str] = Field(default=None, sa_column=Column(sa.Text, nullable=True))
+    created_at: datetime = Field(
+        default_factory=utcnow,
+        sa_column=Column(UtcDateTime, default=utcnow, nullable=False),
+    )
+    updated_at: datetime = Field(
+        default_factory=utcnow,
+        sa_column=Column(UtcDateTime, default=utcnow, onupdate=utcnow, nullable=False),
+    )
+
+
 class InstallationInfo(SQLModel, table=True):
     """Singleton row storing the anonymous installation id for telemetry.
 
