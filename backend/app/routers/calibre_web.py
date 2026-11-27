@@ -175,19 +175,33 @@ def _validate_ebook_file(file: UploadFile, extension: str) -> bool:
         file.file.seek(0)
 
 
-def _metadata_payload(book: Book, authors: list[str]) -> dict:
+def _metadata_payload(
+    book: Book,
+    authors: list[str],
+    existing_identifiers: list[dict] | None = None,
+) -> dict:
     """Project only catalogue metadata owned by LibrisLog.
 
     Reading status, dates, ratings, personal notes, page progress and acquisition
     state deliberately never leave LibrisLog.
     """
-    return {
+    payload = {
         "title": book.title,
         "authors": " & ".join(authors),
         "publishers": book.publisher or "",
         "pubdate": f"{book.published_year}-01-01" if book.published_year else "",
         "comments": book.blurb or "",
     }
+    if book.isbn:
+        # Keep CWNG identifiers such as ASIN/Goodreads intact while replacing
+        # only the ISBN with LibrisLog's current catalogue value.
+        identifiers = [
+            item for item in (existing_identifiers or [])
+            if isinstance(item, dict) and str(item.get("type", "")).lower() != "isbn"
+        ]
+        identifiers.append({"type": "isbn", "val": book.isbn})
+        payload["identifiers"] = identifiers
+    return payload
 
 
 async def _sync_metadata(
@@ -200,9 +214,15 @@ async def _sync_metadata(
     assert book.id is not None
     authors_map = load_authors_batch(session, [book.id])
     authors = authors_map.get(book.id) or []
+    existing_book = await client.get_book(link.calibre_book_id)
+    existing_identifiers = existing_book.get("identifiers", [])
     result = await client.update_book_metadata(
         link.calibre_book_id,
-        _metadata_payload(book, authors),
+        _metadata_payload(
+            book,
+            authors,
+            existing_identifiers if isinstance(existing_identifiers, list) else [],
+        ),
     )
     errors = result.get("errors")
     if errors:
