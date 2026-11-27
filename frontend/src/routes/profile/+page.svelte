@@ -220,15 +220,15 @@ import ShareLinkDialog from '#lib/components/ShareLinkDialog.svelte';
 		applyThemeToDocument();
 		saveThemeToStorage();
 		saveRestorePoint();
-\t\tkeys = await api.profile.listApiKeys();
-\t\tembedTokens = await api.profile.listEmbedTokens();
-\t\ttry {
-\t\t\tcalibreWebConnection = await api.calibreWeb.connection();
-\t\t\tcalibreWebBaseUrl = calibreWebConnection.base_url ?? '';
-\t\t\tcalibreWebUsername = calibreWebConnection.username ?? '';
-\t\t} catch {
-\t\t\t// Keep the rest of the profile page usable if the integration API is unavailable.
-\t\t}
+		keys = await api.profile.listApiKeys();
+		embedTokens = await api.profile.listEmbedTokens();
+		try {
+			calibreWebConnection = await api.calibreWeb.connection();
+			calibreWebBaseUrl = calibreWebConnection.base_url ?? '';
+			calibreWebUsername = calibreWebConnection.username ?? '';
+		} catch {
+			// Keep the rest of the profile page usable if the integration API is unavailable.
+		}
 		await loadShareLinks();
 		appConfig = await api.app.config();
 		oidcConfig = await api.oidc.config();
