@@ -177,12 +177,13 @@ def test_cw_client_refuses_account_without_upload_permission(monkeypatch: pytest
 
 def test_upload_task_correlation_uses_new_task_and_filename() -> None:
     tasks = [
-        {"task_id": "old", "user": "reader", "taskMessage": "Upload: book.epub"},
-        {"task_id": "wrong-user", "user": "admin", "taskMessage": "Upload done: book.epub"},
-        {"task_id": "new", "user": "reader", "taskMessage": "Upload done: book.epub"},
-        {"task_id": "other", "user": "reader", "taskMessage": "Upload done: another.epub"},
+        {"task_id": "old", "user": "Reader One", "taskMessage": "Upload: book.epub"},
+        {"task_id": "wrong-user", "user": "Administrator", "taskMessage": "Upload done: book.epub"},
+        {"task_id": "new", "user": "Reader One", "taskMessage": "Upload done: book.epub"},
+        {"task_id": "other", "user": "Reader One", "taskMessage": "Upload done: another.epub"},
     ]
-    match = _task_for_upload(tasks, {"old", "other"}, "book.epub", "reader")
+    # CWNG task.user is serialize_user(user).name, not the login username.
+    match = _task_for_upload(tasks, {"old", "other"}, "book.epub", "Reader One")
     assert match is not None
     assert match["task_id"] == "new"
 
