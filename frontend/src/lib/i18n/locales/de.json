@@ -617,7 +617,8 @@
       "statusNeedsMatch": "Buch zuordnen",
       "statusCompleted": "Abgeschlossen",
       "statusFailed": "Fehlgeschlagen",
-      "uploadFailed": "E-Book-Upload fehlgeschlagen."
+      "uploadFailed": "E-Book-Upload fehlgeschlagen.",
+      "replaceExisting": "Vorhandenes Format in Calibre-Web ersetzen, falls es bereits existiert"
     },
     "shareProfile": {
       "title": "Profil teilen",
