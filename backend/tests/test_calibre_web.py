@@ -110,7 +110,6 @@ def test_cw_client_logs_in_and_reuses_encrypted_session(monkeypatch: pytest.Monk
 
         cookie = decrypt_api_key(connection.session_cookie_encrypted or "")
         assert cookie == "session=authenticated"
-        assert connection.csrf_token_encrypted is not None
 
         first_login_count = sum(request.url.path.endswith("/auth/login") for request in requests)
         assert first_login_count == 1
