@@ -17,6 +17,7 @@
 		calibre_book_id: null,
 		library_id: null,
 		metadata_synced_at: null,
+		formats: [],
 		uploads: []
 	});
 	let loading = $state(false);
@@ -247,6 +248,20 @@
 				{uploading ? $_('common.saving') : $_('profile.calibreWeb.upload')}
 			</button>
 		</div>
+		{#if files.formats.length > 0}
+			<div class="flex flex-wrap gap-2">
+				{#each files.formats as format (format.format)}
+					<a class="btn btn-outline btn-xs" href={format.download_url} target="_blank" rel="noopener noreferrer">
+						{$_('profile.calibreWeb.download')} {format.format}
+					</a>
+					{#if format.read_url}
+						<a class="btn btn-ghost btn-xs" href={format.read_url} target="_blank" rel="noopener noreferrer">
+						{$_('profile.calibreWeb.read')} {format.format}
+						</a>
+					{/if}
+				{/each}
+			</div>
+		{/if}
 		{#if files.linked && files.calibre_book_id !== null}
 			<div class="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-base-200/50 p-2 text-xs">
 				<span>{$_('profile.calibreWeb.linkedBook')}: <strong>{files.calibre_book_id}</strong></span>
