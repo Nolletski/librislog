@@ -495,10 +495,6 @@ class CalibreWebConnection(SQLModel, table=True):
         default=None,
         sa_column=Column(sa.Text, nullable=True),
     )
-    csrf_token_encrypted: Optional[str] = Field(
-        default=None,
-        sa_column=Column(sa.Text, nullable=True),
-    )
     is_enabled: bool = Field(default=True, nullable=False)
     last_verified_at: Optional[datetime] = Field(
         default=None,
