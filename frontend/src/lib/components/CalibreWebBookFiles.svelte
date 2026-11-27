@@ -32,6 +32,7 @@
 	let candidates = $state<CalibreWebBookCandidate[]>([]);
 	let selectedCandidateId = $state('');
 	let matchingUploadId = $state<number | null>(null);
+	let linkExistingOpen = $state(false);
 	let message = $state<{ type: 'success' | 'error'; text: string } | null>(null);
 	let pollTimer: ReturnType<typeof setInterval> | null = null;
 	let hasActiveUpload = $derived(files.uploads.some((upload) => upload.status === 'queued' || upload.status === 'processing'));
@@ -151,28 +152,38 @@
 	}
 
 	async function linkSelectedBook() {
-		if (matchingUploadId === null || !selectedCandidateId) return;
+		if (!selectedCandidateId) return;
 		matching = true;
 		message = null;
 		try {
-			const result = await api.calibreWeb.matchUpload(
-				matchingUploadId,
-				Number(selectedCandidateId),
-				files.library_id ?? 'default'
-			);
-			files = {
-				...files,
-				linked: true,
-				calibre_book_id: result.calibre_book_id,
-				uploads: files.uploads.map((upload) => upload.id === result.id ? result : upload)
-			};
-			matchingUploadId = null;
-			candidates = [];
-			if (result.metadata_sync_error) {
-				message = { type: 'error', text: result.metadata_sync_error };
+			let metadataSyncError: string | null = null;
+			if (matchingUploadId !== null) {
+				const result = await api.calibreWeb.matchUpload(
+					matchingUploadId,
+					Number(selectedCandidateId),
+					files.library_id ?? 'default'
+				);
+				files = {
+					...files,
+					linked: true,
+					calibre_book_id: result.calibre_book_id,
+					uploads: files.uploads.map((upload) => upload.id === result.id ? result : upload)
+				};
+				matchingUploadId = null;
+				metadataSyncError = result.metadata_sync_error ?? null;
 			} else {
-				message = { type: 'success', text: $_('profile.calibreWeb.metadataSyncSuccess') };
+				const result = await api.calibreWeb.linkExistingBook(
+					book.id,
+					Number(selectedCandidateId),
+					files.library_id ?? 'default'
+				);
+				metadataSyncError = result.metadata_sync_error;
+				linkExistingOpen = false;
 			}
+			candidates = [];
+			message = metadataSyncError
+				? { type: 'error', text: metadataSyncError }
+				: { type: 'success', text: $_('profile.calibreWeb.metadataSyncSuccess') };
 			await load(book.id);
 		} catch (error) {
 			message = { type: 'error', text: error instanceof Error ? error.message : $_('profile.calibreWeb.uploadFailed') };
@@ -249,6 +260,19 @@
 				{uploading ? $_('common.saving') : $_('profile.calibreWeb.upload')}
 			</button>
 		</div>
+		{#if !files.linked && matchingUploadId === null}
+			<button
+				type="button"
+				class="btn btn-outline btn-xs self-start"
+				onclick={() => {
+					linkExistingOpen = !linkExistingOpen;
+					if (linkExistingOpen) void searchCandidates();
+				}}
+				disabled={matching}
+			>
+				{$_('profile.calibreWeb.linkExisting')}
+			</button>
+		{/if}
 		{#if files.formats.length > 0}
 			<div class="flex flex-wrap gap-2">
 				{#each files.formats as format (format.format)}
@@ -271,9 +295,9 @@
 				</button>
 			</div>
 		{/if}
-		{#if matchingUploadId !== null}
+		{#if matchingUploadId !== null || (!files.linked && linkExistingOpen)}
 			<div class="rounded-lg border border-warning/30 bg-warning/5 p-3 flex flex-col gap-2">
-				<p class="text-sm font-medium">{$_('profile.calibreWeb.statusNeedsMatch')}</p>
+				<p class="text-sm font-medium">{matchingUploadId !== null ? $_('profile.calibreWeb.statusNeedsMatch') : $_('profile.calibreWeb.searchTitle')}</p>
 				<div class="flex flex-col sm:flex-row gap-2">
 					<input
 							class="input input-bordered input-sm flex-1"
