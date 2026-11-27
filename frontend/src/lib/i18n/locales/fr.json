@@ -581,6 +581,23 @@
     "profileSaveFailed": "Échec de l'enregistrement du profil",
     "passwordChangeSuccess": "Mot de passe modifié",
     "passwordChangeFailed": "Échec de la modification du mot de passe",
+    "calibreWeb": {
+      "title": "Calibre-Web NextGen",
+      "subtitle": "Connecte ta bibliothèque CWNG pour importer des ebooks et aligner les métadonnées du catalogue avec LibrisLog.",
+      "baseUrl": "URL de Calibre-Web",
+      "username": "Nom d'utilisateur CWNG",
+      "password": "Mot de passe CWNG",
+      "passwordPlaceholder": "Saisis le mot de passe de ton compte CWNG",
+      "connect": "Connecter / Enregistrer la connexion",
+      "disconnect": "Déconnecter",
+      "connected": "Connexion vérifiée",
+      "notConnected": "Non connecté",
+      "connectedAs": "Connecté en tant que",
+      "permissionNote": "Le compte CWNG doit pouvoir importer des fichiers et modifier les métadonnées. Les imports doivent être activés sur le serveur.",
+      "disconnectConfirm": "La déconnexion supprime la connexion locale, les liens entre livres et l'historique des imports. Aucun livre ni fichier ne sera supprimé de Calibre-Web.",
+      "saved": "Connexion Calibre-Web enregistrée.",
+      "removed": "Calibre-Web déconnecté. Ta bibliothèque CWNG n'a pas été modifiée."
+    },
     "shareProfile": {
       "title": "Partager le profil",
       "subtitle": "Publie une vue en lecture seule de ton profil de lecture derrière un lien.",
