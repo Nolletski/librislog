@@ -25,6 +25,7 @@
 	let matching = $state(false);
 	let syncingMetadata = $state(false);
 	let selectedFile = $state<File | null>(null);
+	let replaceExisting = $state(false);
 	let fileInput: HTMLInputElement | undefined = $state();
 	let searchQuery = $state(book.title);
 	let candidates = $state<CalibreWebBookCandidate[]>([]);
@@ -106,9 +107,10 @@
 		uploading = true;
 		message = null;
 		try {
-			const upload = await api.calibreWeb.uploadBook(book.id, selectedFile);
+			const upload = await api.calibreWeb.uploadBook(book.id, selectedFile, replaceExisting);
 			files = { ...files, uploads: [upload, ...files.uploads] };
 			selectedFile = null;
+			replaceExisting = false;
 			if (fileInput) fileInput.value = '';
 			if (upload.status === 'needs_match') {
 				matchingUploadId = upload.id;
@@ -225,6 +227,10 @@
 		<p class="text-xs text-base-content/70">{$_('profile.calibreWeb.connectFirst')}</p>
 	{:else}
 		<p class="text-xs text-base-content/60">{$_('profile.calibreWeb.fileHelp')}</p>
+		<label class="label cursor-pointer justify-start gap-2 py-0">
+			<input class="checkbox checkbox-sm" type="checkbox" bind:checked={replaceExisting} disabled={uploading} />
+			<span class="label-text text-xs">{$_('profile.calibreWeb.replaceExisting')}</span>
+		</label>
 		<div class="flex flex-col sm:flex-row gap-2">
 			<input
 				class="file-input file-input-bordered file-input-sm w-full"
