@@ -618,7 +618,9 @@
       "statusCompleted": "已完成",
       "statusFailed": "失败",
       "uploadFailed": "电子书上传失败。",
-      "replaceExisting": "如果 Calibre-Web 中已存在该格式，则替换它"
+      "replaceExisting": "如果 Calibre-Web 中已存在该格式，则替换它",
+      "download": "下载",
+      "read": "阅读"
     },
     "shareProfile": {
       "title": "分享个人资料",
