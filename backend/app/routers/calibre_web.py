@@ -249,7 +249,6 @@ async def configure_connection(
         connection.username = body.username.strip()
         connection.password_encrypted = encrypt_api_key(body.password)
         connection.session_cookie_encrypted = None
-        connection.csrf_token_encrypted = None
         connection.is_enabled = True
         connection.updated_at = datetime.now(timezone.utc)
 
