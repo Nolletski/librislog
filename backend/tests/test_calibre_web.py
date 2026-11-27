@@ -50,6 +50,8 @@ def test_normalize_calibre_web_url_requires_public_https(monkeypatch: pytest.Mon
         normalize_calibre_web_url("http://ebooks.example.com")
     with pytest.raises(ValueError):
         normalize_calibre_web_url("https://127.0.0.1")
+    with pytest.raises(ValueError, match="invalid port"):
+        normalize_calibre_web_url("https://ebooks.example.com:invalid")
 
 
 def test_normalize_calibre_web_url_rejects_private_dns(monkeypatch: pytest.MonkeyPatch) -> None:
