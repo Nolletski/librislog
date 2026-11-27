@@ -117,3 +117,81 @@ a unique upload marker/filename plus before-and-after task/library inspection)
 and handle concurrent uploads. If that cannot be made reliable, the first
 release should expose a queued state and require explicit user confirmation of
 the matching CWNG book instead of guessing.
+
+
+## Proposed LibrisLog-side data model
+
+The integration should use two dedicated tables rather than adding CWNG fields to
+`Book` or overloading existing notes:
+
+### `calibre_connection`
+One connection per LibrisLog user and CWNG account:
+- `id`, `user_id` (FK to `user.id`), `base_url`
+- `username`, `password_encrypted`
+- `enabled`, `last_checked_at`, `last_error_code` (sanitized, no secrets)
+- `created_at`, `updated_at`
+- unique constraint on `user_id` (one explicitly mapped CWNG account per
+  LibrisLog user in the initial version)
+
+The base URL must be validated as HTTPS for non-local hosts. Redirects should
+not be followed for credential-bearing requests; credentials and cookies must
+never be forwarded to another origin. Private/local host support can be enabled
+for a deliberate self-hosted deployment, but URL validation must reject
+loopback/link-local/metadata addresses unless explicitly allowed by deployment
+configuration. The connection-test flow must not become an SSRF proxy.
+
+### `calibre_book_link`
+A durable association between one LibrisLog book and one CWNG library book:
+- `id`, `user_id`, `book_id` (FK to `book.id`), `connection_id`
+- `cwng_book_id` (stored as string to avoid assumptions about remote ID type)
+- `state` (pending, linked, needs_review, error)
+- `last_synced_at`, `last_error_code`, `created_at`, `updated_at`
+- unique constraint on `user_id, book_id, connection_id`
+- unique constraint on `connection_id, cwng_book_id`
+
+The link is authoritative once explicitly confirmed. ISBN, title, and author
+may be used to suggest candidates but never to silently create or change a link.
+A LibrisLog book deletion must not cascade into a CWNG deletion. Link rows may
+be removed as local bookkeeping only, while remote files remain untouched.
+
+### Format/upload tracking
+
+Upload attempts should be represented separately from a confirmed book link,
+with a generated UUID, original filename, expected format, byte size, checksum,
+state, timestamps, and a sanitized error code. This gives the UI a stable
+"queued / processing / needs matching / failed" state even though CWNG's upload
+API does not return a task ID. It also permits concurrent uploads without
+depending on localized task messages. A checksum and unique generated filename
+can help identify the uploaded file, but automatic matching must still verify
+the CWNG result before committing a durable link.
+
+## Metadata ownership and sync policy
+
+LibrisLog remains the only editable catalogue. Metadata projection to CWNG is
+one-way and limited to fields CWNG actually supports. CWNG-side metadata edits
+must not overwrite LibrisLog. If a CWNG endpoint cannot safely update a field,
+leave it unchanged and report that field as unsupported rather than guessing.
+Reading status, ratings, notes, dates, progress, and reading sessions are never
+written to CWNG by the first version.
+
+## Security and lifecycle requirements
+
+- CWNG credentials are encrypted with LibrisLog's existing
+  `encrypt_api_key()` / `decrypt_api_key()` helpers; never expose them in
+  response schemas, logs, frontend state, or error messages.
+- Use one persistent server-side HTTP session per connection, with bounded
+  timeouts, strict redirect handling, and sanitized errors. Re-authenticate
+  only when the session is rejected, with backoff to avoid CWNG's login limits.
+- Do not persist CWNG cookies unless there is a demonstrated need. If persisted
+  later, encrypt them and define expiry/revocation behaviour.
+- Validate upload extensions and content signatures, enforce configurable size
+  limits, and stream files rather than reading arbitrary uploads fully into RAM.
+- Do not fetch arbitrary remote cover URLs through the integration without
+  SSRF protections.
+- Account disconnect removes local credentials and session state but does not
+  delete remote books or files.
+- User deletion/reset-data paths must explicitly clean local integration rows
+  without making remote delete requests.
+- Admin users must not be able to read another user's CWNG password or session.
+- Audit events may record action, user, book, result, and timestamp, but never
+  credentials, cookies, CSRF tokens, or upload contents.
