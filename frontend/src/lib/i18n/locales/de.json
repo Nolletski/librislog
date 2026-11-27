@@ -620,7 +620,8 @@
       "uploadFailed": "E-Book-Upload fehlgeschlagen.",
       "replaceExisting": "Vorhandenes Format in Calibre-Web ersetzen, falls es bereits existiert",
       "download": "Herunterladen",
-      "read": "Lesen"
+      "read": "Lesen",
+      "linkExisting": "Vorhandenes CWNG-Buch verknüpfen"
     },
     "shareProfile": {
       "title": "Profil teilen",
