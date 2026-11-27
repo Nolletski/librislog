@@ -103,7 +103,11 @@ class CalibreWebClient:
         if self.connection.session_cookie_encrypted:
             try:
                 cookie_header = decrypt_api_key(self.connection.session_cookie_encrypted)
-                self.http.headers["Cookie"] = cookie_header
+                host = urlsplit(self.connection.base_url).hostname
+                for item in cookie_header.split(";"):
+                    name, separator, value = item.strip().partition("=")
+                    if separator and name and host:
+                        self.http.cookies.set(name, value, domain=host, path="/")
                 await self._refresh_csrf()
                 response = await self._request("GET", "api/v1/auth/me")
                 if response.status_code == 200:
