@@ -617,7 +617,8 @@
       "statusNeedsMatch": "Needs book matching",
       "statusCompleted": "Completed",
       "statusFailed": "Failed",
-      "uploadFailed": "Ebook upload failed."
+      "uploadFailed": "Ebook upload failed.",
+      "replaceExisting": "Replace the existing format in Calibre-Web if one is already present"
     },
     "shareProfile": {
       "title": "Share Profile",
