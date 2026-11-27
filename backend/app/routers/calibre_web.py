@@ -434,9 +434,10 @@ async def upload_ebook(
             if link:
                 existing_book = await client.get_book(link.calibre_book_id)
                 existing_formats = {
-                    str(item).upper()
+                    str(item.get("format") if isinstance(item, dict) else item).upper()
                     for item in existing_book.get("formats", [])
                     if isinstance(item, str)
+                    or (isinstance(item, dict) and isinstance(item.get("format"), str))
                 }
                 file_format = extension.lstrip(".").upper()
                 if file_format in existing_formats and not replace_existing:
