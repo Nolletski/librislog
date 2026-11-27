@@ -10,6 +10,7 @@ import ipaddress
 import logging
 import mimetypes
 import socket
+from datetime import datetime, timezone
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
@@ -125,6 +126,11 @@ class CalibreWebClient:
             raise CalibreWebError("Calibre-Web client is not open.")
         try:
             response = await self.http.request(method, path.lstrip("/"), **kwargs)
+            # Keep an explicit Cookie header in step with Set-Cookie updates
+            # because this client persists its session across requests.
+            cookie_header = self._cookie_header()
+            if cookie_header:
+                self.http.headers["Cookie"] = cookie_header
         except httpx.TimeoutException as exc:
             raise CalibreWebError("Calibre-Web did not respond before the timeout.") from exc
         except httpx.HTTPError as exc:
@@ -197,9 +203,7 @@ class CalibreWebClient:
             raise CalibreWebError("Calibre-Web login response did not contain account permissions.")
         await self._refresh_csrf()
         self._persist_session()
-        self.connection.last_verified_at = __import__("datetime").datetime.now(
-            __import__("datetime").timezone.utc
-        )
+        self.connection.last_verified_at = datetime.now(timezone.utc)
         self.session.add(self.connection)
         self.session.commit()
 
