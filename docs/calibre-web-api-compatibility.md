@@ -21,9 +21,14 @@ available for review in the draft pull request. It has not been deployed.
 - EPUB and PDF uploads are limited to 100 MB, validated by file signature, and
   forwarded using a sanitized basename. Existing formats can only be replaced
   after the user explicitly confirms replacement.
-- CWNG upload tasks are correlated using the task IDs observed before upload,
+- CWNG upload tasks are correlated using task IDs observed before upload,
   the uploaded filename, and the authenticated account's CWNG display name
   from `/api/v1/auth/me`. The upload API itself does not return a task ID.
+  A task is attached only when exactly one new candidate matches; ambiguous
+  candidates are deliberately left unmatched. If a task remains invisible for
+  15 minutes, the local upload is marked failed with an explicit message
+  rather than polling forever. The user must verify the CWNG library before
+  retrying or linking a result.
 - Upload completion does not silently create a permanent book mapping. The
   user searches CWNG, selects a candidate, and LibrisLog verifies that the
   selected book is readable by the mapped account before saving the mapping.
@@ -31,12 +36,16 @@ available for review in the draft pull request. It has not been deployed.
   uploading duplicate files.
 - Linked EPUB/PDF files expose CWNG reader and download links in the LibrisLog
   book drawer. The browser uses its own CWNG login session for those links.
+  Remote lookup errors are surfaced separately from a successful empty format
+  list; the UI no longer silently presents connection failures as no files.
 - Metadata sync is one-way from LibrisLog to CWNG: title, authors (when
   present), publisher, publication date, description, ISBN, and page count
   when CWNG's book detail exposes a populated integer custom column named
-  `pages` or `page_count`. CWNG currently omits empty custom columns from that
-  detail response, so an empty page-count column cannot yet be discovered or
-  initialized by this integration. Existing non-ISBN identifiers are preserved.
+  `pages` or `page_count`. Unknown/empty LibrisLog values are omitted from
+  updates, so they do not erase richer CWNG metadata. CWNG currently omits
+  empty custom columns from that detail response, so an empty page-count
+  column cannot yet be discovered or initialized by this integration. Existing
+  non-ISBN identifiers are preserved.
 - Language and cover projection are not implemented. Reading status, dates,
   ratings, personal notes, acquisition state, and reading progress are never
   sent to CWNG.
@@ -85,6 +94,11 @@ The integration therefore:
   session to avoid CWNG's login rate limits;
 - disables redirects on credential-bearing HTTP requests;
 - requires a public HTTPS hostname and rejects hosts resolving to non-public IPs;
+  **this check is not connection-pinned**: the HTTP transport performs its own
+  DNS resolution after validation, so DNS rebinding remains an SSRF security
+  blocker until a resolver/transport pins the validated public address while
+  retaining TLS hostname verification. Do not expose this configurable
+  endpoint to untrusted users before that is fixed;
 - checks EPUB/PDF signatures and enforces the 100 MB upload limit;
 - never changes the Kobo `api_endpoint` token or any Kobo configuration.
 
@@ -93,6 +107,11 @@ stored CWNG credentials and session cookies undecryptable.
 
 ## Remaining work before deployment
 
+- Implement a connection-pinned DNS transport (or equivalent connection-level
+  destination enforcement) to close the DNS-rebinding/SSRF gap. The current
+  hostname pre-check alone is not sufficient.
+- Add route-level authorization/isolation tests and concurrency tests around
+  uploads and explicit mappings.
 - Run the full backend, frontend, CLI, and Playwright test suites on the branch.
 - Validate a real connection, upload, task poll, explicit match, metadata sync,
   format replacement, and download against a non-production CWNG account.
