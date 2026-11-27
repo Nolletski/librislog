@@ -620,7 +620,8 @@
       "uploadFailed": "Échec de l'import de l'ebook.",
       "replaceExisting": "Remplacer le format existant dans Calibre-Web s'il est déjà présent",
       "download": "Télécharger",
-      "read": "Lire"
+      "read": "Lire",
+      "linkExisting": "Lier un livre CWNG existant"
     },
     "shareProfile": {
       "title": "Partager le profil",
