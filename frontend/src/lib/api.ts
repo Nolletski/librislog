@@ -64,7 +64,8 @@ import type {
 	TimelineSessionListResponse,
 	CalibreWebConnection,
 	CalibreWebUpload,
-	CalibreWebBookCandidate
+	CalibreWebBookCandidate,
+	CalibreWebBookFiles
 } from './types';
 import { apiKey, csrfToken } from './stores/auth';
 import { get } from 'svelte/store';
@@ -887,6 +888,10 @@ export const api = {
 
 		disconnect(): Promise<void> {
 			return request<void>('/calibre-web/connection', { method: 'DELETE' });
+		},
+
+		bookFiles(bookId: number): Promise<CalibreWebBookFiles> {
+			return request<CalibreWebBookFiles>(`/calibre-web/books/${bookId}/files`);
 		},
 
 		searchBooks(q: string): Promise<{ items: CalibreWebBookCandidate[] }> {
