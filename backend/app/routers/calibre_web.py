@@ -384,9 +384,12 @@ async def upload_ebook(
     if book is None or book.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Book not found.")
 
-    filename = Path(file.filename or "").name
+    # Treat both POSIX and Windows separators as path separators. The remote
+    # library should receive only a plain filename, never a client-supplied path.
+    supplied_filename = (file.filename or "").replace("\\", "/")
+    filename = Path(supplied_filename).name
     extension = Path(filename).suffix.lower()
-    if not filename or extension not in ALLOWED_EBOOK_FORMATS:
+    if not filename or len(filename) > 255 or extension not in ALLOWED_EBOOK_FORMATS:
         raise HTTPException(status_code=415, detail="Only EPUB and PDF files are supported.")
     file.file.seek(0, 2)
     file_size = file.file.tell()
