@@ -3,6 +3,32 @@
 Validated against the upstream `v4.1.74` tag of
 `new-usemame/Calibre-Web-NextGen`.
 
+> **Implementation snapshot — 27-11-2026:** the backend implementation now exists
+> on `feat/calibre-web-integration`. This snapshot supersedes older *proposed*
+> schema/security details further down wherever they differ.
+
+Current implementation:
+- `calibre_web_connection`: one connection per LibrisLog user; username and
+  public HTTPS URL are stored normally, while password, Flask session cookie,
+  and CSRF token are encrypted with LibrisLog's existing Fernet helper.
+- `calibre_web_book_link`: explicit mapping by integer CWNG book ID, scoped
+  to a connection and CWNG library. ISBN/title are not used as permanent keys.
+- `calibre_web_upload`: records filename, format, state, task ID, baseline
+  task IDs, and optional CWNG book ID. Ebook bytes are streamed to CWNG and
+  are not stored in these tables.
+- Uploads are limited to EPUB/PDF, 100 MB, with PDF/EPUB container-signature
+  checks. The configured CWNG URL must be HTTPS and resolve only to public IPs.
+- CWNG sessions are reused between requests to avoid its login rate limits.
+  Session cookies are encrypted at rest; redirects are not followed.
+- A new CWNG upload is not linked automatically. LibrisLog waits for ingest
+  completion and requires the user to confirm the CWNG book ID.
+- Metadata projection currently covers title, authors, publisher, publication
+  date, and description. Reading status, dates, rating, notes, and progress
+  remain exclusively in LibrisLog. Automatic re-projection after every
+  LibrisLog metadata edit is not implemented yet; a manual sync endpoint exists.
+- Deleting a LibrisLog book/user or disconnecting removes only local mapping,
+  upload-history, and credential rows. It never deletes remote CWNG books/files.
+
 ## Confirmed API behaviour
 
 - `GET /api/v1/auth/csrf` returns a CSRF token.
