@@ -21,9 +21,11 @@ Current implementation:
   confirmation. The configured CWNG URL must be HTTPS and resolve only to public IPs.
 - CWNG sessions are reused between requests to avoid its login rate limits.
   Session cookies are encrypted at rest; redirects are not followed.
-- A new CWNG upload is not linked automatically. LibrisLog waits for ingest
-  completion, lets the user search CWNG, verifies the selected book is
-  accessible, and only then persists the explicit mapping. Linked EPUB/PDF
+- Existing CWNG books can be linked directly from a LibrisLog book without
+  uploading duplicate files. New CWNG uploads are not linked automatically:
+  LibrisLog waits for ingest completion, lets the user search CWNG, verifies
+  the selected book is accessible, and only then persists the explicit mapping.
+  Linked EPUB/PDF
   formats expose CWNG reader and download links in the book drawer; these links
   use the browser's CWNG login session.
 - Metadata projection covers title, authors, publisher, publication date,
