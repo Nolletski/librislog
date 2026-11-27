@@ -7,7 +7,7 @@ import json
 import zipfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 from urllib.parse import urljoin, urlsplit
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
@@ -88,7 +88,9 @@ class BookFilesResponse(BaseModel):
 
 class BookMatchRequest(BaseModel):
     calibre_book_id: int = PydanticField(gt=0)
-    library_id: str = PydanticField(default="default", min_length=1, max_length=255)
+    # CWNG API calls currently operate in the authenticated account's active library context.
+    # Do not advertise multi-library mappings until explicit library selection is verified.
+    library_id: Literal["default"] = "default"
 
 
 class BookLinkResponse(BaseModel):
