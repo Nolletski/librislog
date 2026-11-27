@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import HTTPException, status
 from sqlmodel import Session, col, func, select
 
-from app.models import ApiKey, Author, Book, BookAuthor, BookTag, OidcLink, ReadingProgress, ReadingSession, Tag, User, UserRole, UserSettings
+from app.models import ApiKey, Author, Book, BookAuthor, BookTag, CalibreWebBookLink, CalibreWebConnection, CalibreWebUpload, OidcLink, ReadingProgress, ReadingSession, Tag, User, UserRole, UserSettings
 from app.time_utils import utcnow
 from app.services.avatar import delete_all_user_avatar_images
 from app.services.cover_storage import delete_cover_file, local_cover_filename
@@ -59,6 +59,15 @@ def delete_user_reading_data(session: Session, user_id: int, covers_dir: str) ->
     ).one()
 
     if book_ids:
+        for link in session.exec(
+            select(CalibreWebBookLink).where(col(CalibreWebBookLink.librislog_book_id).in_(book_ids))
+        ).all():
+            session.delete(link)
+        for upload in session.exec(
+            select(CalibreWebUpload).where(col(CalibreWebUpload.librislog_book_id).in_(book_ids))
+        ).all():
+            session.delete(upload)
+
         for cover_url in {book.cover_url for book in user_books if book.cover_url}:
             filename = local_cover_filename(cover_url)
             if not filename:
@@ -111,6 +120,11 @@ def delete_user_account_data(session: Session, user: User, covers_dir: str) -> R
     for key in session.exec(select(ApiKey).where(ApiKey.user_id == user.id)).all():
         key.revoked_at = utcnow()
         session.add(key)
+
+    for connection in session.exec(
+        select(CalibreWebConnection).where(CalibreWebConnection.user_id == user.id)
+    ).all():
+        session.delete(connection)
 
     oidc_link = session.exec(select(OidcLink).where(OidcLink.user_id == user.id)).first()
     if oidc_link:
