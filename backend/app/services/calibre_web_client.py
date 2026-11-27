@@ -11,6 +11,7 @@ import logging
 import mimetypes
 import socket
 from datetime import datetime, timezone
+from typing import BinaryIO
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
@@ -237,7 +238,7 @@ class CalibreWebClient:
         items = self._json_object(response).get("items", [])
         return [item for item in items if isinstance(item, dict)] if isinstance(items, list) else []
 
-    async def upload_new_book(self, filename: str, data: bytes) -> dict:
+    async def upload_new_book(self, filename: str, data: bytes | BinaryIO) -> dict:
         self.require_upload_permission()
         content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
         response = await self._request(
@@ -254,7 +255,7 @@ class CalibreWebClient:
             raise CalibreWebError("Calibre-Web rejected the ebook upload.")
         return self._json_object(response)
 
-    async def add_book_format(self, calibre_book_id: int, filename: str, data: bytes) -> dict:
+    async def add_book_format(self, calibre_book_id: int, filename: str, data: bytes | BinaryIO) -> dict:
         self.require_upload_permission()
         content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
         response = await self._request(
