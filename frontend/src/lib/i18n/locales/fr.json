@@ -618,7 +618,9 @@
       "statusCompleted": "Terminé",
       "statusFailed": "Échec",
       "uploadFailed": "Échec de l'import de l'ebook.",
-      "replaceExisting": "Remplacer le format existant dans Calibre-Web s'il est déjà présent"
+      "replaceExisting": "Remplacer le format existant dans Calibre-Web s'il est déjà présent",
+      "download": "Télécharger",
+      "read": "Lire"
     },
     "shareProfile": {
       "title": "Partager le profil",
