@@ -61,7 +61,10 @@ import type {
 	ReadingSessionInput,
 	SessionMutationResponse,
 	TimelineSessionEntry,
-	TimelineSessionListResponse
+	TimelineSessionListResponse,
+	CalibreWebConnection,
+	CalibreWebUpload,
+	CalibreWebBookCandidate
 } from './types';
 import { apiKey, csrfToken } from './stores/auth';
 import { get } from 'svelte/store';
@@ -867,6 +870,54 @@ export const api = {
 					}
 				}
 			}
+		}
+	},
+
+	calibreWeb: {
+		connection(): Promise<CalibreWebConnection> {
+			return request<CalibreWebConnection>('/calibre-web/connection');
+		},
+
+		configureConnection(data: { base_url: string; username: string; password: string }): Promise<CalibreWebConnection> {
+			return request<CalibreWebConnection>('/calibre-web/connection', {
+				method: 'POST',
+				body: JSON.stringify(data)
+			});
+		},
+
+		disconnect(): Promise<void> {
+			return request<void>('/calibre-web/connection', { method: 'DELETE' });
+		},
+
+		searchBooks(q: string): Promise<{ items: CalibreWebBookCandidate[] }> {
+			const qs = new URLSearchParams({ q });
+			return request<{ items: CalibreWebBookCandidate[] }>(`/calibre-web/books/search?${qs.toString()}`);
+		},
+
+		uploadBook(bookId: number, file: File): Promise<CalibreWebUpload> {
+			const form = new FormData();
+			form.append('file', file, file.name);
+			return request<CalibreWebUpload>(`/calibre-web/books/${bookId}/upload`, {
+				method: 'POST',
+				body: form
+			});
+		},
+
+		uploadStatus(uploadId: number): Promise<CalibreWebUpload> {
+			return request<CalibreWebUpload>(`/calibre-web/uploads/${uploadId}`);
+		},
+
+		matchUpload(uploadId: number, calibreBookId: number, libraryId = 'default'): Promise<CalibreWebUpload> {
+			return request<CalibreWebUpload>(`/calibre-web/uploads/${uploadId}/match`, {
+				method: 'POST',
+				body: JSON.stringify({ calibre_book_id: calibreBookId, library_id: libraryId })
+			});
+		},
+
+		syncMetadata(bookId: number): Promise<{ synced: boolean; message?: string | null }> {
+			return request<{ synced: boolean; message?: string | null }>(`/calibre-web/books/${bookId}/sync-metadata`, {
+				method: 'POST'
+			});
 		}
 	},
 
