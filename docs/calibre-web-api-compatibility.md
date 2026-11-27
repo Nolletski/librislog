@@ -29,8 +29,8 @@ Current implementation:
 - Metadata projection covers title, authors, publisher, publication date,
   description, and ISBN. Existing non-ISBN CWNG identifiers are preserved.
   Reading status, dates, rating, notes, and progress remain exclusively in
-  LibrisLog. Linked books are re-projected after LibrisLog book edits, and a
-  manual sync action is also available. Language, page count, and cover
+  LibrisLog. Linked books are re-projected after edits saved through the book
+  drawer, and a manual sync action is also available. Language, page count, and cover
   projection are not implemented yet because their CWNG write semantics need
   separate verification.
 - Deleting a LibrisLog book/user or disconnecting removes only local mapping,
