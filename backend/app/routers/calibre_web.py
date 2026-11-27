@@ -213,11 +213,12 @@ def _metadata_payload(
     """
     payload = {
         "title": book.title,
-        "authors": " & ".join(authors),
         "publishers": book.publisher or "",
         "pubdate": f"{book.published_year}-01-01" if book.published_year else "",
         "comments": book.blurb or "",
     }
+    if authors:
+        payload["authors"] = " & ".join(authors)
     if book.isbn:
         # Keep CWNG identifiers such as ASIN/Goodreads intact while replacing
         # only the ISBN with LibrisLog's current catalogue value.
