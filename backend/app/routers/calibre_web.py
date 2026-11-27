@@ -67,6 +67,15 @@ class UploadRead(BaseModel):
     created_at: datetime
 
 
+class BookFilesResponse(BaseModel):
+    configured: bool
+    linked: bool = False
+    calibre_book_id: Optional[int] = None
+    library_id: Optional[str] = None
+    metadata_synced_at: Optional[datetime] = None
+    uploads: list[UploadRead] = []
+
+
 class BookMatchRequest(BaseModel):
     calibre_book_id: int = PydanticField(gt=0)
     library_id: str = PydanticField(default="default", min_length=1, max_length=255)
@@ -284,6 +293,46 @@ def disconnect(
         session.delete(upload)
     session.delete(connection)
     session.commit()
+
+
+@router.get("/books/{book_id}/files", response_model=BookFilesResponse)
+def get_book_files(
+    book_id: int,
+    current_user: User = Depends(require_user),
+    session: Session = Depends(get_session),
+) -> BookFilesResponse:
+    book = session.get(Book, book_id)
+    if book is None or book.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Book not found.")
+
+    connection = session.exec(
+        select(CalibreWebConnection).where(CalibreWebConnection.user_id == current_user.id)
+    ).first()
+    if connection is None:
+        return BookFilesResponse(configured=False)
+
+    link = session.exec(
+        select(CalibreWebBookLink).where(
+            CalibreWebBookLink.connection_id == connection.id,
+            CalibreWebBookLink.librislog_book_id == book_id,
+        )
+    ).first()
+    uploads = session.exec(
+        select(CalibreWebUpload)
+        .where(
+            CalibreWebUpload.connection_id == connection.id,
+            CalibreWebUpload.librislog_book_id == book_id,
+        )
+        .order_by(CalibreWebUpload.created_at.desc())
+    ).all()
+    return BookFilesResponse(
+        configured=True,
+        linked=link is not None,
+        calibre_book_id=link.calibre_book_id if link else None,
+        library_id=link.library_id if link else None,
+        metadata_synced_at=link.metadata_synced_at if link else None,
+        uploads=[_upload_read(upload) for upload in uploads],
+    )
 
 
 @router.get("/books/search")
