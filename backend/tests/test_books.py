@@ -7,10 +7,10 @@ import pytest
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 from sqlalchemy.exc import IntegrityError as SQLAIntegrityError
-from sqlmodel import Session, col
+from sqlmodel import Session, col, select
 
 from app.config import settings
-from app.models import Book, User
+from app.models import Book, CalibreWebBookLink, CalibreWebConnection, CalibreWebUpload, User
 import app.routers.books as books_router
 
 
@@ -1119,6 +1119,48 @@ def test_delete_book(client: TestClient) -> None:
     assert resp.status_code == 204
     # Confirm gone
     assert client.get(f"/api/books/{book['id']}").status_code == 404
+
+
+def test_delete_book_removes_cwng_mapping_and_upload_history(
+    client: TestClient,
+    session: Session,
+) -> None:
+    created = _create_book(client, title="CWNG mapped book")
+    user = session.exec(select(User).where(User.email == "test@example.com")).one()
+    book = session.get(Book, created["id"])
+    assert book is not None
+
+    connection = CalibreWebConnection(
+        user_id=user.id,
+        base_url="https://ebooks.example.com",
+        username="reader",
+        password_encrypted="encrypted-password",
+    )
+    session.add(connection)
+    session.commit()
+    session.refresh(connection)
+    session.add(CalibreWebBookLink(
+        connection_id=connection.id,
+        librislog_book_id=book.id,
+        calibre_book_id=456,
+    ))
+    session.add(CalibreWebUpload(
+        connection_id=connection.id,
+        librislog_book_id=book.id,
+        filename="mapped.epub",
+        file_format="EPUB",
+    ))
+    session.commit()
+
+    response = client.delete(f"/api/books/{book.id}")
+    assert response.status_code == 204
+    assert session.exec(
+        select(CalibreWebBookLink).where(CalibreWebBookLink.librislog_book_id == book.id)
+    ).first() is None
+    assert session.exec(
+        select(CalibreWebUpload).where(CalibreWebUpload.librislog_book_id == book.id)
+    ).first() is None
+    assert session.get(CalibreWebConnection, connection.id) is not None
 
 
 def test_delete_book_removes_local_cover_file(client: TestClient, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
