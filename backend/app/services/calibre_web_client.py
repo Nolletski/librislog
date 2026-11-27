@@ -75,9 +75,15 @@ def normalize_calibre_web_url(value: str) -> str:
 class CalibreWebClient:
     """A CWNG session client backed by one LibrisLog connection record."""
 
-    def __init__(self, connection: CalibreWebConnection, session: Session):
+    def __init__(
+        self,
+        connection: CalibreWebConnection,
+        session: Session,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ):
         self.connection = connection
         self.session = session
+        self.transport = transport
         self.http: httpx.AsyncClient | None = None
         self.csrf_token: str | None = None
         self.me: dict = {}
@@ -98,6 +104,7 @@ class CalibreWebClient:
             timeout=REQUEST_TIMEOUT_SECONDS,
             follow_redirects=False,
             trust_env=False,
+            transport=self.transport,
         )
 
         if self.connection.session_cookie_encrypted:
