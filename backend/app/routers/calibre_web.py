@@ -5,7 +5,7 @@ from __future__ import annotations
 import html
 import json
 import zipfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urljoin, urlsplit
@@ -34,6 +34,7 @@ from app.services.calibre_web_client import (
 router = APIRouter(prefix="/api/calibre-web", tags=["calibre-web"])
 
 MAX_EBOOK_SIZE_BYTES = 100 * 1024 * 1024
+UPLOAD_TASK_VISIBILITY_TIMEOUT = timedelta(minutes=15)
 ALLOWED_EBOOK_FORMATS = {".epub", ".pdf"}
 
 
@@ -82,6 +83,7 @@ class BookFilesResponse(BaseModel):
     metadata_synced_at: Optional[datetime] = None
     formats: list[BookFormatRead] = PydanticField(default_factory=list)
     uploads: list[UploadRead] = PydanticField(default_factory=list)
+    remote_error: Optional[str] = None
 
 
 class BookMatchRequest(BaseModel):
@@ -142,21 +144,27 @@ def _task_for_upload(
     tasks: list[dict],
     before_ids: set[str],
     filename: str,
-    username: str | None = None,
+    display_name: str | None = None,
 ) -> dict | None:
+    """Return a task only when the available evidence identifies one candidate.
+
+    CWNG does not return a task ID from its upload endpoint. Matching on a
+    display name and filename is therefore heuristic; ambiguity must never be
+    resolved by taking the first task in the list.
+    """
     escaped_filename = html.escape(filename)
-    escaped_username = html.escape(username) if username else None
+    candidates = []
     for task in tasks:
         task_id = str(task.get("task_id", ""))
         message = str(task.get("taskMessage") or "")
         task_user = str(task.get("user") or "")
-        if escaped_username is not None and task_user != escaped_username:
+        if display_name is not None and task_user != display_name:
             continue
         if task_id and task_id not in before_ids and (
             filename in message or escaped_filename in message
         ):
-            return task
-    return None
+            candidates.append(task)
+    return candidates[0] if len(candidates) == 1 else None
 
 
 def _apply_task_status(upload: CalibreWebUpload, task: dict) -> None:
@@ -218,12 +226,15 @@ def _metadata_payload(
     Reading status, dates, ratings, personal notes, page progress and acquisition
     state deliberately never leave LibrisLog.
     """
-    payload = {
-        "title": book.title,
-        "publishers": book.publisher or "",
-        "pubdate": f"{book.published_year}-01-01" if book.published_year else "",
-        "comments": book.blurb or "",
-    }
+    payload = {"title": book.title}
+    # Empty LibrisLog fields mean "unknown", not "clear the remote value".
+    # Only a future explicit-clear action should erase richer CWNG metadata.
+    if book.publisher:
+        payload["publishers"] = book.publisher
+    if book.published_year:
+        payload["pubdate"] = f"{book.published_year}-01-01"
+    if book.blurb:
+        payload["comments"] = book.blurb
     if authors:
         payload["authors"] = " & ".join(authors)
     if book.page_count > 0:
@@ -397,6 +408,7 @@ async def get_book_files(
         .order_by(CalibreWebUpload.created_at.desc())
     ).all()
     formats: list[BookFormatRead] = []
+    remote_error: str | None = None
     if link:
         try:
             async with CalibreWebClient(connection, session) as client:
@@ -429,8 +441,9 @@ async def get_book_files(
                     )
                 )
             session.commit()
-        except CalibreWebError:
+        except CalibreWebError as exc:
             session.rollback()
+            remote_error = str(exc)
 
     return BookFilesResponse(
         configured=True,
@@ -440,6 +453,7 @@ async def get_book_files(
         metadata_synced_at=link.metadata_synced_at if link else None,
         formats=formats,
         uploads=[_upload_read(upload) for upload in uploads],
+        remote_error=remote_error,
     )
 
 
@@ -655,6 +669,13 @@ async def get_upload_status(
                     )
                     if task:
                         _apply_task_status(upload, task)
+                if task is None and datetime.now(timezone.utc) - upload.created_at >= UPLOAD_TASK_VISIBILITY_TIMEOUT:
+                    upload.status = "failed"
+                    upload.error_message = (
+                        "Calibre-Web no longer exposes this upload task. Its result could not be verified; "
+                        "check the CWNG library before retrying or linking a book."
+                    )
+                    upload.updated_at = datetime.now(timezone.utc)
             session.add(upload)
             session.commit()
         except (CalibreWebError, ValueError, json.JSONDecodeError) as exc:
