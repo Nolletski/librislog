@@ -205,7 +205,6 @@ class CalibreWebClient:
         self._persist_session()
         self.connection.last_verified_at = datetime.now(timezone.utc)
         self.session.add(self.connection)
-        self.session.commit()
 
     def require_upload_permission(self) -> None:
         role = self.me.get("role") or {}
