@@ -56,6 +56,9 @@
 		loading = true;
 		try {
 			files = await api.calibreWeb.bookFiles(bookId);
+			if (files.remote_error) {
+				message = { type: 'error', text: files.remote_error };
+			}
 			const pending = files.uploads.find((upload) => upload.status === 'needs_match');
 			if (pending) {
 				matchingUploadId = pending.id;
