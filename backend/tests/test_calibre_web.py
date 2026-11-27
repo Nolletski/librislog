@@ -33,6 +33,7 @@ class _SessionStub:
 
 def _auth_payload() -> dict:
     return {
+        "name": "Reader One",
         "role": {"upload": True, "edit": True},
         "features": {"uploading": True},
     }
@@ -109,6 +110,7 @@ def test_cw_client_logs_in_and_reuses_encrypted_session(monkeypatch: pytest.Monk
         ) as client:
             client.require_upload_permission()
             client.require_edit_permission()
+            assert client.me["name"] == "Reader One"
             assert client.me["role"]["upload"] is True
 
         cookie = decrypt_api_key(connection.session_cookie_encrypted or "")
