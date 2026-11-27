@@ -89,6 +89,12 @@ class BookMatchRequest(BaseModel):
     library_id: str = PydanticField(default="default", min_length=1, max_length=255)
 
 
+class BookLinkResponse(BaseModel):
+    linked: bool
+    calibre_book_id: int
+    metadata_sync_error: Optional[str] = None
+
+
 class MetadataSyncResponse(BaseModel):
     synced: bool
     message: Optional[str] = None
@@ -433,6 +439,68 @@ async def search_calibre_books(
     except CalibreWebError as exc:
         session.rollback()
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.post("/books/{book_id}/link", response_model=BookLinkResponse)
+async def link_existing_calibre_book(
+    book_id: int,
+    body: BookMatchRequest,
+    current_user: User = Depends(require_user),
+    session: Session = Depends(get_session),
+) -> BookLinkResponse:
+    assert current_user.id is not None
+    book = session.get(Book, book_id)
+    if book is None or book.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Book not found.")
+    connection = _get_connection(session, current_user.id)
+
+    existing = session.exec(
+        select(CalibreWebBookLink).where(
+            CalibreWebBookLink.connection_id == connection.id,
+            CalibreWebBookLink.librislog_book_id == book_id,
+        )
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="This LibrisLog book is already linked to Calibre-Web.")
+
+    try:
+        async with CalibreWebClient(connection, session) as client:
+            await client.get_book(body.calibre_book_id)
+    except CalibreWebError as exc:
+        session.rollback()
+        raise HTTPException(
+            status_code=422,
+            detail="The selected Calibre-Web book does not exist or is not accessible to this account.",
+        ) from exc
+
+    link = CalibreWebBookLink(
+        connection_id=connection.id,
+        librislog_book_id=book_id,
+        library_id=body.library_id,
+        calibre_book_id=body.calibre_book_id,
+    )
+    session.add(link)
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="This Calibre-Web book is already linked.") from exc
+
+    metadata_sync_error = None
+    try:
+        async with CalibreWebClient(connection, session) as client:
+            await _sync_metadata(client, session, book, link)
+        session.add(link)
+        session.commit()
+    except CalibreWebError as exc:
+        session.rollback()
+        metadata_sync_error = str(exc)
+
+    return BookLinkResponse(
+        linked=True,
+        calibre_book_id=body.calibre_book_id,
+        metadata_sync_error=metadata_sync_error,
+    )
 
 
 @router.post("/books/{book_id}/upload", response_model=UploadRead, status_code=202)
