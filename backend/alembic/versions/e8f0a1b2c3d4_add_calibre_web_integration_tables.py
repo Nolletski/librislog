@@ -94,6 +94,7 @@ def upgrade() -> None:
         sa.Column("file_format", sa.String(length=16), nullable=False),
         sa.Column("status", sa.String(length=32), nullable=False, server_default="queued"),
         sa.Column("calibre_task_id", sa.String(length=128), nullable=True),
+        sa.Column("task_ids_before_json", sa.Text(), nullable=False, server_default="[]"),
         sa.Column("calibre_book_id", sa.Integer(), nullable=True),
         sa.Column("error_message", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
