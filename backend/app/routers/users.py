@@ -12,7 +12,7 @@ from app.auth import (
 )
 from app.config import settings
 from app.database import get_session
-from app.models import ApiKey, User, UserRole, UserSettings
+from app.models import ApiKey, CalibreWebBookLink, CalibreWebConnection, CalibreWebUpload, User, UserRole, UserSettings
 from app.schemas import UserAdminUpdate, UserCreate, UserRead
 from app.services.avatar import (
     build_user_read,
@@ -179,6 +179,20 @@ def delete_user(
         session.delete(user_settings)
 
     avatar_filenames = delete_all_user_avatar_images(session, user_id)
+
+    connections = session.exec(
+        select(CalibreWebConnection).where(CalibreWebConnection.user_id == user_id)
+    ).all()
+    for connection in connections:
+        for link in session.exec(
+            select(CalibreWebBookLink).where(CalibreWebBookLink.connection_id == connection.id)
+        ).all():
+            session.delete(link)
+        for upload in session.exec(
+            select(CalibreWebUpload).where(CalibreWebUpload.connection_id == connection.id)
+        ).all():
+            session.delete(upload)
+        session.delete(connection)
 
     session.delete(user)
     session.commit()
