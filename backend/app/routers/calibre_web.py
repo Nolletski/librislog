@@ -136,11 +136,16 @@ def _task_for_upload(
     tasks: list[dict],
     before_ids: set[str],
     filename: str,
+    username: str | None = None,
 ) -> dict | None:
     escaped_filename = html.escape(filename)
+    escaped_username = html.escape(username) if username else None
     for task in tasks:
         task_id = str(task.get("task_id", ""))
         message = str(task.get("taskMessage") or "")
+        task_user = str(task.get("user") or "")
+        if escaped_username is not None and task_user != escaped_username:
+            continue
         if task_id and task_id not in before_ids and (
             filename in message or escaped_filename in message
         ):
@@ -510,7 +515,7 @@ async def upload_ebook(
                 calibre_book_id = None
 
             tasks = await client.get_tasks()
-            task = _task_for_upload(tasks, before_ids, filename)
+            task = _task_for_upload(tasks, before_ids, filename, connection.username)
             upload = CalibreWebUpload(
                 connection_id=connection.id,
                 librislog_book_id=book_id,
@@ -549,7 +554,7 @@ async def get_upload_status(
                 tasks = await client.get_tasks()
                 if not upload.calibre_task_id:
                     before_ids = set(json.loads(upload.task_ids_before_json or "[]"))
-                    task = _task_for_upload(tasks, before_ids, upload.filename)
+                    task = _task_for_upload(tasks, before_ids, upload.filename, connection.username)
                     if task:
                         _apply_task_status(upload, task)
                 else:
