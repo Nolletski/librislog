@@ -581,6 +581,23 @@
     "profileSaveFailed": "Profil konnte nicht gespeichert werden",
     "passwordChangeSuccess": "Passwort geändert",
     "passwordChangeFailed": "Passwort konnte nicht geändert werden",
+    "calibreWeb": {
+      "title": "Calibre-Web NextGen",
+      "subtitle": "Verbinde deine CWNG-Bibliothek, um E-Books hochzuladen und Katalogdaten mit LibrisLog abzugleichen.",
+      "baseUrl": "Calibre-Web-URL",
+      "username": "CWNG-Benutzername",
+      "password": "CWNG-Passwort",
+      "passwordPlaceholder": "Passwort deines CWNG-Kontos eingeben",
+      "connect": "Verbinden / Verbindung speichern",
+      "disconnect": "Verbindung trennen",
+      "connected": "Verbindung überprüft",
+      "notConnected": "Nicht verbunden",
+      "connectedAs": "Verbunden als",
+      "permissionNote": "Das CWNG-Konto benötigt Upload- und Metadaten-Bearbeitungsrechte. Uploads müssen auf dem Server aktiviert sein.",
+      "disconnectConfirm": "Beim Trennen werden die lokale Verbindung, Buchverknüpfungen und Upload-Historie entfernt. Bücher und Dateien in Calibre-Web werden nicht gelöscht.",
+      "saved": "Calibre-Web-Verbindung gespeichert.",
+      "removed": "Calibre-Web getrennt. Deine CWNG-Bibliothek wurde nicht verändert."
+    },
     "shareProfile": {
       "title": "Profil teilen",
       "subtitle": "Veröffentliche eine schreibgeschützte Ansicht deines Leseprofils hinter einem Link.",
