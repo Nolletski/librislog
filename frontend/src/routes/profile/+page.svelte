@@ -30,7 +30,8 @@ import ShareLinkDialog from '#lib/components/ShareLinkDialog.svelte';
 	OidcLinkStatus,
 	PublicProfileAudience,
 	PublicProfileLink,
-	PublicProfileVisibilityConfig
+	PublicProfileVisibilityConfig,
+	CalibreWebConnection
 } from '#lib/types.js';
 
 	let firstname = $state('');
@@ -48,6 +49,19 @@ import ShareLinkDialog from '#lib/components/ShareLinkDialog.svelte';
 	let keyCopied = $state(false);
 	let keys = $state<ApiKeyMeta[]>([]);
 	let pendingDeleteKeyId = $state<number | null>(null);
+	let calibreWebConnection = $state<CalibreWebConnection>({
+		configured: false,
+		base_url: null,
+		username: null,
+		is_enabled: false,
+		last_verified_at: null
+	});
+	let calibreWebBaseUrl = $state('');
+	let calibreWebUsername = $state('');
+	let calibreWebPassword = $state('');
+	let calibreWebSaving = $state(false);
+	let calibreWebDisconnectPending = $state(false);
+	let calibreWebMessage = $state<{ type: 'success' | 'error'; text: string } | null>(null);
 	let oidcConfig = $state<OidcConfig>({ enabled: false, provider_id: null, provider_name: null, auto_redirect: false });
 	let appConfig = $state<AppConfig>({ embed_enabled: true, dashboard_quote_enabled: true, thalia_cover_search_enabled: false, password_login_enabled: true, trusted_proxy_auth_enabled: false, avatar_max_upload_mb: 10, avatar_max_dimension: 512 });
 	let oidcLink = $state<OidcLinkStatus>({ linked: false, provider_name: null, oidc_email: null, oidc_name: null });
@@ -208,6 +222,13 @@ import ShareLinkDialog from '#lib/components/ShareLinkDialog.svelte';
 		saveRestorePoint();
 		keys = await api.profile.listApiKeys();
 		embedTokens = await api.profile.listEmbedTokens();
+		try {
+			calibreWebConnection = await api.calibreWeb.connection();
+			calibreWebBaseUrl = calibreWebConnection.base_url ?? '';
+			calibreWebUsername = calibreWebConnection.username ?? '';
+		} catch {
+			// Keep the rest of the profile page usable if the integration API is unavailable.
+		}
 		await loadShareLinks();
 		appConfig = await api.app.config();
 		oidcConfig = await api.oidc.config();
@@ -215,6 +236,53 @@ import ShareLinkDialog from '#lib/components/ShareLinkDialog.svelte';
 			oidcLink = await api.oidc.linkStatus();
 		}
 		avatarOptions = await api.profile.getAvatarOptions();
+	}
+
+	async function saveCalibreWebConnection() {
+		calibreWebMessage = null;
+		calibreWebSaving = true;
+		try {
+			calibreWebConnection = await api.calibreWeb.configureConnection({
+				base_url: calibreWebBaseUrl.trim(),
+				username: calibreWebUsername.trim(),
+				password: calibreWebPassword
+			});
+			calibreWebPassword = '';
+			calibreWebDisconnectPending = false;
+			calibreWebMessage = { type: 'success', text: $_('profile.calibreWeb.saved') };
+		} catch (error) {
+			calibreWebMessage = {
+				type: 'error',
+				text: error instanceof Error ? error.message : $_('profile.calibreWeb.notConnected')
+			};
+		} finally {
+			calibreWebSaving = false;
+		}
+	}
+
+	async function disconnectCalibreWeb() {
+		calibreWebMessage = null;
+		calibreWebSaving = true;
+		try {
+			await api.calibreWeb.disconnect();
+			calibreWebConnection = {
+				configured: false,
+				base_url: null,
+				username: null,
+				is_enabled: false,
+				last_verified_at: null
+			};
+			calibreWebPassword = '';
+			calibreWebDisconnectPending = false;
+			calibreWebMessage = { type: 'success', text: $_('profile.calibreWeb.removed') };
+		} catch (error) {
+			calibreWebMessage = {
+				type: 'error',
+				text: error instanceof Error ? error.message : $_('profile.calibreWeb.notConnected')
+			};
+		} finally {
+			calibreWebSaving = false;
+		}
 	}
 
 	onMount(() => {
@@ -1296,6 +1364,71 @@ import ShareLinkDialog from '#lib/components/ShareLinkDialog.svelte';
 		</div>
 	</div>
 
+	<div id="section-calibre-web" class="scroll-mt-24 card bg-base-100 border border-base-200 shadow-sm rounded-2xl">
+		<div class="card-body gap-3">
+			<div class="flex items-center justify-between gap-3">
+				<h2 class="text-lg font-semibold">{$_('profile.calibreWeb.title')}</h2>
+				<span class="badge {calibreWebConnection.configured ? 'badge-success' : 'badge-ghost'}">
+					{calibreWebConnection.configured ? $_('profile.calibreWeb.connected') : $_('profile.calibreWeb.notConnected')}
+				</span>
+			</div>
+			<p class="text-sm text-base-content/70">{$_('profile.calibreWeb.subtitle')}</p>
+			<p class="text-xs text-base-content/60">{$_('profile.calibreWeb.permissionNote')}</p>
+			{#if calibreWebMessage}
+				<Alert
+					type={calibreWebMessage.type === 'success' ? 'success' : 'error'}
+					onClose={() => (calibreWebMessage = null)}
+				>{calibreWebMessage.text}</Alert>
+			{/if}
+			{#if calibreWebConnection.configured}
+				<div class="rounded-lg border border-base-200 bg-base-200/40 p-3 text-sm">
+					<p class="font-medium">{$_('profile.calibreWeb.connectedAs')}: {calibreWebConnection.username}</p>
+					<p class="break-all text-base-content/70">{calibreWebConnection.base_url}</p>
+				</div>
+			{/if}
+			<label class="form-control gap-1">
+				<span class="label-text">{$_('profile.calibreWeb.baseUrl')}</span>
+				<input class="input input-bordered w-full" type="url" bind:value={calibreWebBaseUrl} placeholder="https://ebooks.example.com" autocomplete="url" />
+			</label>
+			<label class="form-control gap-1">
+				<span class="label-text">{$_('profile.calibreWeb.username')}</span>
+				<input class="input input-bordered w-full" type="text" bind:value={calibreWebUsername} autocomplete="username" />
+			</label>
+			<label class="form-control gap-1">
+				<span class="label-text">{$_('profile.calibreWeb.password')}</span>
+				<input class="input input-bordered w-full" type="password" bind:value={calibreWebPassword} placeholder={$_('profile.calibreWeb.passwordPlaceholder')} autocomplete="new-password" />
+			</label>
+			<div class="flex flex-wrap items-center gap-2">
+				<button
+					type="button"
+					class="btn btn-primary btn-sm"
+					onclick={saveCalibreWebConnection}
+					disabled={calibreWebSaving || !calibreWebBaseUrl.trim() || !calibreWebUsername.trim() || !calibreWebPassword}
+				>
+					{calibreWebSaving ? $_('common.saving') : $_('profile.calibreWeb.connect')}
+				</button>
+				{#if calibreWebConnection.configured && !calibreWebDisconnectPending}
+					<button type="button" class="btn btn-outline btn-error btn-sm" onclick={() => (calibreWebDisconnectPending = true)} disabled={calibreWebSaving}>
+						{$_('profile.calibreWeb.disconnect')}
+					</button>
+				{/if}
+			</div>
+			{#if calibreWebDisconnectPending}
+				<div class="rounded-lg border border-error/30 bg-error/5 p-3 flex flex-col gap-2">
+					<p class="text-sm">{$_('profile.calibreWeb.disconnectConfirm')}</p>
+					<div class="flex gap-2">
+						<button type="button" class="btn btn-error btn-sm" onclick={disconnectCalibreWeb} disabled={calibreWebSaving}>
+							{$_('profile.calibreWeb.disconnect')}
+						</button>
+						<button type="button" class="btn btn-ghost btn-sm" onclick={() => (calibreWebDisconnectPending = false)} disabled={calibreWebSaving}>
+							{$_('common.cancel')}
+						</button>
+					</div>
+				</div>
+			{/if}
+		</div>
+	</div>
+
 	{#if appConfig.embed_enabled}
 	<div id="section-embed-tokens" class="scroll-mt-24 card bg-base-100 border border-base-200 shadow-sm rounded-2xl">
 			<div class="card-body gap-3">
@@ -1701,6 +1834,7 @@ import ShareLinkDialog from '#lib/components/ShareLinkDialog.svelte';
 		<li><a href="#section-goals" class:menu-active={activeSection === 'section-goals'}>{$_('profile.goals.title')}</a></li>
 		<li><a href="#section-reading-dates" class:menu-active={activeSection === 'section-reading-dates'}>{$_('profile.readingDates.title')}</a></li>
 		<li><a href="#section-api-keys" class:menu-active={activeSection === 'section-api-keys'}>{$_('user.apiKeys')}</a></li>
+		<li><a href="#section-calibre-web" class:menu-active={activeSection === 'section-calibre-web'}>{$_('profile.calibreWeb.title')}</a></li>
 		<li><a href="#section-embed-tokens" class:menu-active={activeSection === 'section-embed-tokens'}>{$_('user.embedTokens')}</a></li>
 		<li><a href="#section-share-profile" class:menu-active={activeSection === 'section-share-profile'}>{$_('profile.shareProfile.title')}</a></li>
 		<li><a href="#section-data" class:menu-active={activeSection === 'section-data'}>{$_('profile.dataManagement.title')}</a></li>

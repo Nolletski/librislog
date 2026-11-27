@@ -18,6 +18,7 @@ from app.auth import start_browser_session
 from app.config import settings
 from app.logging_config import configure_logging
 from app.routers import admin, auth, books, config, cover_candidates, covers, data, docs, embed, health, hygiene, import_, oidc, profile, progress, public_profile, sessions, share_links, statistics, tags, users
+from app.routers import calibre_web
 from app.services.avatar_storage import cleanup_orphan_avatars
 from app.services.cover_storage import cleanup_orphan_covers
 from app.services.data_import import cleanup_temp_files
@@ -340,6 +341,7 @@ app.add_middleware(
 
 
 app.include_router(books.router)
+app.include_router(calibre_web.router)
 app.include_router(sessions.router)
 app.include_router(import_.router)
 app.include_router(covers.router)

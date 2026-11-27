@@ -16,6 +16,7 @@
 	import DateConflictDialog from './DateConflictDialog.svelte';
 	import AutoSearchCoverModal from './AutoSearchCoverModal.svelte';
 	import BarcodeScanner from './BarcodeScanner.svelte';
+	import CalibreWebBookFiles from './CalibreWebBookFiles.svelte';
 	import { ScanBarcode, X } from '@lucide/svelte';
 
 	let {
@@ -186,6 +187,20 @@
 		return payload;
 	}
 
+	function syncCalibreMetadataInBackground(bookId: number) {
+		void api.calibreWeb.syncMetadata(bookId).then((result) => {
+			if (!result.synced && result.message) {
+				toasts.add(result.message, 'error');
+			}
+		}).catch((error: unknown) => {
+			const status = (error as { status?: number })?.status;
+			// 404 means this book is not linked (or no CWNG connection exists).
+			if (status !== 404) {
+				toasts.add(error instanceof Error ? error.message : $_('profile.calibreWeb.metadataSyncFailed'), 'error');
+			}
+		});
+	}
+
 	async function needsCompletionProgressPrompt(updated: Book, dateFinishedWasNull: boolean): Promise<boolean> {
 		if (updated.reading_status !== 'read' || !dateFinishedWasNull || !updated.date_finished || !updated.page_count) {
 			return false;
@@ -244,6 +259,7 @@
 		}
 
 		book = updated;
+		syncCalibreMetadataInBackground(updated.id);
 		if (await needsCompletionProgressPrompt(updated, dateFinishedWasNull)) {
 			pendingProgressBook = updated;
 			dateConflictOpen = false;
@@ -342,6 +358,7 @@
 					updated = await api.books.update(book.id, cleanPayload);
 				}
 				book = updated;
+				syncCalibreMetadataInBackground(updated.id);
 				if (await needsCompletionProgressPrompt(updated, dateFinishedWasNull)) {
 					pendingProgressBook = updated;
 					pendingStatus = null;
@@ -360,6 +377,7 @@
 				reading_status
 			});
 			book = updated;
+			syncCalibreMetadataInBackground(updated.id);
 			if (await needsCompletionProgressPrompt(updated, dateFinishedWasNull)) {
 				pendingProgressBook = updated;
 				return;
@@ -663,6 +681,10 @@
 				onCancel={closeAutoSearchModal}
 				onSelect={importAutoSearchCandidate}
 			/>
+
+			{#if book}
+				<CalibreWebBookFiles {book} />
+			{/if}
 
 			<div class="sticky bottom-0 bg-base-100 py-3 border-t border-base-200 flex gap-2">
 				<button type="button" class="btn btn-ghost btn-sm" onclick={() => (open = false)} disabled={saving}>

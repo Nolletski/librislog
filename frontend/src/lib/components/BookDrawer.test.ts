@@ -13,6 +13,16 @@ const mockGetSettings = vi.fn(async () => ({
 	auto_set_date_finished: true
 }));
 const mockToastsAdd = vi.fn();
+const mockCalibreWebBookFiles = vi.fn(async () => ({
+	configured: false,
+	linked: false,
+	calibre_book_id: null,
+	library_id: null,
+	metadata_synced_at: null,
+	formats: [],
+	uploads: []
+}));
+const mockCalibreWebSyncMetadata = vi.fn(async () => ({ synced: false }));
 
 vi.mock('#lib/api.js', () => ({
 	api: {
@@ -27,6 +37,10 @@ vi.mock('#lib/api.js', () => ({
 		},
 		profile: {
 			getSettings: () => mockGetSettings()
+		},
+		calibreWeb: {
+			bookFiles: (bookId: number) => mockCalibreWebBookFiles(bookId),
+			syncMetadata: (bookId: number) => mockCalibreWebSyncMetadata(bookId)
 		}
 	}
 }));

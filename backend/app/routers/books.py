@@ -12,7 +12,7 @@ from sqlmodel import Session, col, func, select
 from app.auth import require_user
 from app.config import settings
 from app.database import get_session
-from app.models import AcquisitionStatus, Author, Book, BookAuthor, BookTag, Medium, ReadingProgress, ReadingSession, ReadingStatus, Tag, User, UserSettings
+from app.models import AcquisitionStatus, Author, Book, BookAuthor, BookTag, CalibreWebBookLink, CalibreWebUpload, Medium, ReadingProgress, ReadingSession, ReadingStatus, Tag, User, UserSettings
 from app.schemas import (
     BookCreate,
     BookIdListResponse,
@@ -938,6 +938,14 @@ def delete_book(
         session.delete(link)
     for link in session.exec(select(BookAuthor).where(BookAuthor.book_id == book.id)).all():
         session.delete(link)
+    for link in session.exec(
+        select(CalibreWebBookLink).where(CalibreWebBookLink.librislog_book_id == book.id)
+    ).all():
+        session.delete(link)
+    for upload in session.exec(
+        select(CalibreWebUpload).where(CalibreWebUpload.librislog_book_id == book.id)
+    ).all():
+        session.delete(upload)
     for entry in session.exec(
         select(ReadingProgress).where(ReadingProgress.book_id == book.id)
     ).all():
