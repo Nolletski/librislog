@@ -184,7 +184,6 @@ class CalibreWebClient:
         if not cookie_header:
             raise CalibreWebError("Calibre-Web did not issue a session cookie.")
         self.connection.session_cookie_encrypted = encrypt_api_key(cookie_header)
-        self.connection.csrf_token_encrypted = encrypt_api_key(self.csrf_token)
         self.session.add(self.connection)
 
     async def _refresh_csrf(self) -> None:
