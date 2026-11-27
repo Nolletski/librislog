@@ -8,6 +8,7 @@ import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urljoin, urlsplit
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field as PydanticField
@@ -67,12 +68,19 @@ class UploadRead(BaseModel):
     created_at: datetime
 
 
+class BookFormatRead(BaseModel):
+    format: str
+    download_url: str
+    read_url: Optional[str] = None
+
+
 class BookFilesResponse(BaseModel):
     configured: bool
     linked: bool = False
     calibre_book_id: Optional[int] = None
     library_id: Optional[str] = None
     metadata_synced_at: Optional[datetime] = None
+    formats: list[BookFormatRead] = PydanticField(default_factory=list)
     uploads: list[UploadRead] = PydanticField(default_factory=list)
 
 
@@ -328,7 +336,7 @@ def disconnect(
 
 
 @router.get("/books/{book_id}/files", response_model=BookFilesResponse)
-def get_book_files(
+async def get_book_files(
     book_id: int,
     current_user: User = Depends(require_user),
     session: Session = Depends(get_session),
@@ -357,12 +365,46 @@ def get_book_files(
         )
         .order_by(CalibreWebUpload.created_at.desc())
     ).all()
+    formats: list[BookFormatRead] = []
+    if link:
+        try:
+            async with CalibreWebClient(connection, session) as client:
+                remote_book = await client.get_book(link.calibre_book_id)
+            for item in remote_book.get("formats", []):
+                if not isinstance(item, dict):
+                    continue
+                file_format = item.get("format")
+                download_path = item.get("download_url")
+                read_path = item.get("read_url")
+                if file_format not in {"EPUB", "PDF"} or not isinstance(download_path, str):
+                    continue
+                parsed_download = urlsplit(download_path)
+                if parsed_download.scheme or parsed_download.netloc or not download_path.startswith("/"):
+                    continue
+                download_url = urljoin(connection.base_url.rstrip("/") + "/", download_path)
+                read_url = None
+                if isinstance(read_path, str):
+                    parsed_read = urlsplit(read_path)
+                    if not parsed_read.scheme and not parsed_read.netloc and read_path.startswith("/"):
+                        read_url = urljoin(connection.base_url.rstrip("/") + "/", read_path)
+                formats.append(
+                    BookFormatRead(
+                        format=file_format,
+                        download_url=download_url,
+                        read_url=read_url,
+                    )
+                )
+            session.commit()
+        except CalibreWebError:
+            session.rollback()
+
     return BookFilesResponse(
         configured=True,
         linked=link is not None,
         calibre_book_id=link.calibre_book_id if link else None,
         library_id=link.library_id if link else None,
         metadata_synced_at=link.metadata_synced_at if link else None,
+        formats=formats,
         uploads=[_upload_read(upload) for upload in uploads],
     )
 
