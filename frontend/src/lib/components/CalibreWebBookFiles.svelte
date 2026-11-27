@@ -91,6 +91,7 @@
 				void searchCandidates();
 			} else if (updated.status === 'completed' || updated.status === 'failed') {
 				stopPolling();
+				if (updated.status === 'completed') await load(book.id);
 			}
 		} catch (error) {
 			stopPolling();
