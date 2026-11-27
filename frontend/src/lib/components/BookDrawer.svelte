@@ -187,6 +187,20 @@
 		return payload;
 	}
 
+	function syncCalibreMetadataInBackground(bookId: number) {
+		void api.calibreWeb.syncMetadata(bookId).then((result) => {
+			if (!result.synced && result.message) {
+				toasts.add(result.message, 'error');
+			}
+		}).catch((error: unknown) => {
+			const status = (error as { status?: number })?.status;
+			// 404 means this book is not linked (or no CWNG connection exists).
+			if (status !== 404) {
+				toasts.add(error instanceof Error ? error.message : $_('profile.calibreWeb.metadataSyncFailed'), 'error');
+			}
+		});
+	}
+
 	async function needsCompletionProgressPrompt(updated: Book, dateFinishedWasNull: boolean): Promise<boolean> {
 		if (updated.reading_status !== 'read' || !dateFinishedWasNull || !updated.date_finished || !updated.page_count) {
 			return false;
@@ -245,6 +259,7 @@
 		}
 
 		book = updated;
+		syncCalibreMetadataInBackground(updated.id);
 		if (await needsCompletionProgressPrompt(updated, dateFinishedWasNull)) {
 			pendingProgressBook = updated;
 			dateConflictOpen = false;
@@ -343,6 +358,7 @@
 					updated = await api.books.update(book.id, cleanPayload);
 				}
 				book = updated;
+				syncCalibreMetadataInBackground(updated.id);
 				if (await needsCompletionProgressPrompt(updated, dateFinishedWasNull)) {
 					pendingProgressBook = updated;
 					pendingStatus = null;
@@ -361,6 +377,7 @@
 				reading_status
 			});
 			book = updated;
+			syncCalibreMetadataInBackground(updated.id);
 			if (await needsCompletionProgressPrompt(updated, dateFinishedWasNull)) {
 				pendingProgressBook = updated;
 				return;
