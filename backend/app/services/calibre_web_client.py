@@ -61,9 +61,16 @@ def normalize_calibre_web_url(value: str) -> str:
         raise ValueError("Use the public hostname for Calibre-Web, not an IP address.")
 
     try:
+        port = parts.port or 443
+    except ValueError as exc:
+        raise ValueError("Calibre-Web URL contains an invalid port.") from exc
+    if not 1 <= port <= 65535:
+        raise ValueError("Calibre-Web URL contains an invalid port.")
+
+    try:
         resolved = {
             ipaddress.ip_address(item[4][0])
-            for item in socket.getaddrinfo(host, parts.port or 443, type=socket.SOCK_STREAM)
+            for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
         }
     except OSError as exc:
         raise ValueError("Calibre-Web hostname could not be resolved.") from exc
