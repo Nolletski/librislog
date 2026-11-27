@@ -73,7 +73,7 @@ class BookFilesResponse(BaseModel):
     calibre_book_id: Optional[int] = None
     library_id: Optional[str] = None
     metadata_synced_at: Optional[datetime] = None
-    uploads: list[UploadRead] = []
+    uploads: list[UploadRead] = PydanticField(default_factory=list)
 
 
 class BookMatchRequest(BaseModel):
