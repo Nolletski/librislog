@@ -724,3 +724,9 @@ export interface CalibreWebFormat {
 	download_url: string;
 	read_url: string | null;
 }
+
+export interface CalibreWebBookLinkResult {
+	linked: boolean;
+	calibre_book_id: number;
+	metadata_sync_error: string | null;
+}
