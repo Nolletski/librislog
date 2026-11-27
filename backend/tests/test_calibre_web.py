@@ -230,6 +230,22 @@ def test_catalogue_projection_excludes_reading_data() -> None:
 
 
 
+def test_catalogue_projection_updates_isbn_without_dropping_other_identifiers() -> None:
+    book = Book(title="Example", isbn="9781234567890")
+    payload = _metadata_payload(
+        book,
+        ["Author"],
+        [
+            {"type": "asin", "val": "B000000000"},
+            {"type": "isbn", "val": "9780000000000"},
+        ],
+    )
+    assert payload["identifiers"] == [
+        {"type": "asin", "val": "B000000000"},
+        {"type": "isbn", "val": "9781234567890"},
+    ]
+
+
 def test_ebook_upload_checks_pdf_and_epub_signatures() -> None:
     pdf = UploadFile(filename="valid.pdf", file=BytesIO(b"%PDF-1.7 sample"))
     invalid_pdf = UploadFile(filename="fake.pdf", file=BytesIO(b"not a pdf"))
