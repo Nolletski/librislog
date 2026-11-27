@@ -14,7 +14,10 @@ Validated against the upstream `v4.1.74` tag of
   per-file errors, not a Calibre book ID or ingest task ID.
 - `POST /api/v1/books/{book_id}/formats` queues a format for an existing
   book and returns HTTP 202. It also does not return a processing task ID.
-- `GET /api/v1/tasks` lists the current user's tasks.
+- `GET /api/v1/tasks` lists the current user's tasks. Each task entry includes
+  `task_id`, numeric `stat`, localized `status`, `taskMessage`, progress,
+  and optional error text. This can support task polling, but the task must be
+  correlated with the upload without relying on localized display strings.
 
 ## Authentication constraint
 
@@ -43,8 +46,8 @@ permission and uploads must be enabled server-side.
 
 ## Still to validate before implementing upload orchestration
 
-- Whether `GET /api/v1/tasks` exposes enough stable task detail to detect
-  completion and failure for upload ingest.
+- Whether a newly created upload task can be correlated reliably with a specific
+  upload request (the task list has IDs/status but no explicit upload request ID).
 - Whether a newly ingested book can be safely resolved through a scoped
   library query and verified metadata/format checks without ambiguous matches.
 - Exact CSRF/session cookie behaviour for server-to-server HTTP clients,
