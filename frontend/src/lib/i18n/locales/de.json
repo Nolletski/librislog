@@ -618,7 +618,9 @@
       "statusCompleted": "Abgeschlossen",
       "statusFailed": "Fehlgeschlagen",
       "uploadFailed": "E-Book-Upload fehlgeschlagen.",
-      "replaceExisting": "Vorhandenes Format in Calibre-Web ersetzen, falls es bereits existiert"
+      "replaceExisting": "Vorhandenes Format in Calibre-Web ersetzen, falls es bereits existiert",
+      "download": "Herunterladen",
+      "read": "Lesen"
     },
     "shareProfile": {
       "title": "Profil teilen",
