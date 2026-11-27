@@ -246,6 +246,32 @@ def test_catalogue_projection_excludes_reading_data() -> None:
 
 
 
+def test_catalogue_projection_updates_only_a_matching_integer_pages_column() -> None:
+    book = Book(title="Example", page_count=352)
+    payload = _metadata_payload(
+        book,
+        [],
+        [],
+        [
+            {"id": 3, "name": "pages", "label": "Pages", "datatype": "int"},
+            {"id": 4, "name": "status", "label": "Status", "datatype": "text"},
+        ],
+    )
+    assert payload["custom_column_3"] == "352"
+    assert "custom_column_4" not in payload
+
+
+def test_catalogue_projection_does_not_clear_pages_when_page_count_is_unknown() -> None:
+    book = Book(title="Example", page_count=0)
+    payload = _metadata_payload(
+        book,
+        [],
+        [],
+        [{"id": 3, "name": "pages", "label": "Pages", "datatype": "int"}],
+    )
+    assert not any(key.startswith("custom_column_") for key in payload)
+
+
 def test_catalogue_projection_updates_isbn_without_dropping_other_identifiers() -> None:
     book = Book(title="Example", isbn="9781234567890")
     payload = _metadata_payload(
