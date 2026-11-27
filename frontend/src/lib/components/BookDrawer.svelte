@@ -16,6 +16,7 @@
 	import DateConflictDialog from './DateConflictDialog.svelte';
 	import AutoSearchCoverModal from './AutoSearchCoverModal.svelte';
 	import BarcodeScanner from './BarcodeScanner.svelte';
+	import CalibreWebBookFiles from './CalibreWebBookFiles.svelte';
 	import { ScanBarcode, X } from '@lucide/svelte';
 
 	let {
@@ -663,6 +664,10 @@
 				onCancel={closeAutoSearchModal}
 				onSelect={importAutoSearchCandidate}
 			/>
+
+			{#if book}
+				<CalibreWebBookFiles {book} />
+			{/if}
 
 			<div class="sticky bottom-0 bg-base-100 py-3 border-t border-base-200 flex gap-2">
 				<button type="button" class="btn btn-ghost btn-sm" onclick={() => (open = false)} disabled={saving}>
