@@ -581,6 +581,23 @@
     "profileSaveFailed": "保存个人资料失败",
     "passwordChangeSuccess": "密码已更改",
     "passwordChangeFailed": "更改密码失败",
+    "calibreWeb": {
+      "title": "Calibre-Web NextGen",
+      "subtitle": "连接 CWNG 书库以上传电子书，并让目录元数据与 LibrisLog 保持一致。",
+      "baseUrl": "Calibre-Web 地址",
+      "username": "CWNG 用户名",
+      "password": "CWNG 密码",
+      "passwordPlaceholder": "输入 CWNG 账户密码",
+      "connect": "连接 / 保存连接",
+      "disconnect": "断开连接",
+      "connected": "连接已验证",
+      "notConnected": "未连接",
+      "connectedAs": "当前账户",
+      "permissionNote": "CWNG 账户需要上传和编辑元数据的权限，并且服务器必须启用上传功能。",
+      "disconnectConfirm": "断开后会删除本地连接、书籍关联和上传记录，但不会删除 Calibre-Web 中的任何书籍或文件。",
+      "saved": "Calibre-Web 连接已保存。",
+      "removed": "已断开 Calibre-Web。CWNG 书库未作任何更改。"
+    },
     "shareProfile": {
       "title": "分享个人资料",
       "subtitle": "通过链接发布你的阅读资料的只读视图。",
