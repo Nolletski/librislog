@@ -715,5 +715,12 @@ export interface CalibreWebBookFiles {
 	calibre_book_id: number | null;
 	library_id: string | null;
 	metadata_synced_at: string | null;
+	formats: CalibreWebFormat[];
 	uploads: CalibreWebUpload[];
+}
+
+export interface CalibreWebFormat {
+	format: string;
+	download_url: string;
+	read_url: string | null;
 }
