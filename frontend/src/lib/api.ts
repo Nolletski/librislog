@@ -899,9 +899,10 @@ export const api = {
 			return request<{ items: CalibreWebBookCandidate[] }>(`/calibre-web/books/search?${qs.toString()}`);
 		},
 
-		uploadBook(bookId: number, file: File): Promise<CalibreWebUpload> {
+		uploadBook(bookId: number, file: File, replaceExisting = false): Promise<CalibreWebUpload> {
 			const form = new FormData();
 			form.append('file', file, file.name);
+			if (replaceExisting) form.append('replace_existing', 'true');
 			return request<CalibreWebUpload>(`/calibre-web/books/${bookId}/upload`, {
 				method: 'POST',
 				body: form
