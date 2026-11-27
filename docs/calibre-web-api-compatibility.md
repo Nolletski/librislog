@@ -13,8 +13,10 @@ available for review in the draft pull request. It has not been deployed.
   encrypted with LibrisLog's existing Fernet helper. CSRF tokens are fetched
   when a session is opened and are not persisted.
 - A separate durable mapping links a LibrisLog book to an explicitly selected
-  CWNG book ID, scoped to the user's CWNG connection and library. ISBN and
-  title are candidate hints only, never permanent identifiers.
+  CWNG book ID, scoped to the user's CWNG connection. The request currently
+  accepts only the `default` library identifier because explicit multi-library
+  selection has not been verified. ISBN and title are candidate hints only,
+  never permanent identifiers.
 - Upload history records the filename, format, processing state, CWNG task ID
   (when found), and CWNG book ID after confirmation. Ebook bytes are not stored
   in the integration tables.
