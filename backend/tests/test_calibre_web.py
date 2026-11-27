@@ -11,7 +11,8 @@ import httpx
 import pytest
 
 from app.auth import decrypt_api_key, encrypt_api_key
-from app.models import Book, CalibreWebConnection
+from app.models import Book, CalibreWebConnection, CalibreWebUpload, User
+from sqlmodel import select
 from app.routers.calibre_web import (
     _apply_task_status,
     _book_formats,
@@ -302,6 +303,48 @@ def test_catalogue_projection_updates_isbn_without_dropping_other_identifiers() 
         {"type": "asin", "val": "B000000000"},
         {"type": "isbn", "val": "9781234567890"},
     ]
+
+
+def test_calibre_web_upload_and_book_routes_are_user_scoped(client, session, create_user_with_key) -> None:
+    owner = session.exec(select(User).where(User.email == "test@example.com")).first()
+    assert owner is not None and owner.id is not None
+    other_user, other_key = create_user_with_key(email="other@example.com")
+    assert other_user.id is not None
+
+    owner_connection = CalibreWebConnection(
+        user_id=owner.id,
+        base_url="https://ebooks.owner.example",
+        username="owner",
+        password_encrypted=encrypt_api_key("owner-secret"),
+    )
+    other_connection = CalibreWebConnection(
+        user_id=other_user.id,
+        base_url="https://ebooks.other.example",
+        username="other",
+        password_encrypted=encrypt_api_key("other-secret"),
+    )
+    owner_book = Book(title="Private book", user_id=owner.id)
+    session.add_all([owner_connection, other_connection, owner_book])
+    session.commit()
+    session.refresh(owner_connection)
+    session.refresh(owner_book)
+    assert owner_connection.id is not None and owner_book.id is not None
+
+    upload = CalibreWebUpload(
+        connection_id=owner_connection.id,
+        librislog_book_id=owner_book.id,
+        filename="private.epub",
+        file_format="EPUB",
+        status="queued",
+    )
+    session.add(upload)
+    session.commit()
+    session.refresh(upload)
+    assert upload.id is not None
+
+    client.headers["X-API-Key"] = other_key
+    assert client.get(f"/api/calibre-web/books/{owner_book.id}/files").status_code == 404
+    assert client.get(f"/api/calibre-web/uploads/{upload.id}").status_code == 404
 
 
 def test_ebook_upload_checks_pdf_and_epub_signatures() -> None:
