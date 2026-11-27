@@ -587,7 +587,7 @@ async def upload_ebook(
                 calibre_book_id = None
 
             tasks = await client.get_tasks()
-            task = _task_for_upload(tasks, before_ids, filename, connection.username)
+            task = _task_for_upload(tasks, before_ids, filename, client.me.get("name"))
             upload = CalibreWebUpload(
                 connection_id=connection.id,
                 librislog_book_id=book_id,
@@ -626,7 +626,7 @@ async def get_upload_status(
                 tasks = await client.get_tasks()
                 if not upload.calibre_task_id:
                     before_ids = set(json.loads(upload.task_ids_before_json or "[]"))
-                    task = _task_for_upload(tasks, before_ids, upload.filename, connection.username)
+                    task = _task_for_upload(tasks, before_ids, upload.filename, client.me.get("name"))
                     if task:
                         _apply_task_status(upload, task)
                 else:
