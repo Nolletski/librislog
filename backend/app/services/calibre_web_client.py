@@ -261,6 +261,14 @@ class CalibreWebClient:
             raise CalibreWebError("Calibre-Web rejected the format upload.")
         return self._json_object(response)
 
+    async def get_book(self, calibre_book_id: int) -> dict:
+        response = await self._request("GET", f"api/v1/books/{calibre_book_id}")
+        if response.status_code == 404:
+            raise CalibreWebError("The selected Calibre-Web book does not exist or is not accessible.")
+        if response.status_code != 200:
+            raise CalibreWebError("Could not read the selected Calibre-Web book.")
+        return self._json_object(response)
+
     async def search_books(self, query: str, limit: int = 20) -> list[dict]:
         response = await self._request(
             "GET",
