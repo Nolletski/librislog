@@ -190,6 +190,14 @@ def test_upload_task_correlation_uses_new_task_and_filename() -> None:
     assert match["task_id"] == "new"
 
 
+def test_upload_task_correlation_refuses_ambiguous_candidates() -> None:
+    tasks = [
+        {"task_id": "new-1", "user": "Reader One", "taskMessage": "Upload done: book.epub"},
+        {"task_id": "new-2", "user": "Reader One", "taskMessage": "Upload done: book.epub"},
+    ]
+    assert _task_for_upload(tasks, set(), "book.epub", "Reader One") is None
+
+
 @pytest.mark.parametrize(
     ("stat_value", "expected"),
     [
@@ -246,6 +254,12 @@ def test_catalogue_projection_excludes_reading_data() -> None:
     assert "notes" not in payload
     assert "reading_status" not in payload
 
+
+
+def test_catalogue_projection_does_not_clear_unknown_remote_fields() -> None:
+    book = Book(title="Example", publisher=None, published_year=None, blurb=None, isbn=None)
+    payload = _metadata_payload(book, [])
+    assert payload == {"title": "Example"}
 
 
 def test_catalogue_projection_updates_only_a_matching_integer_pages_column() -> None:
