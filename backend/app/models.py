@@ -556,6 +556,10 @@ class CalibreWebUpload(SQLModel, table=True):
     file_format: str = Field(max_length=16)
     status: str = Field(default="queued", max_length=32, index=True)
     calibre_task_id: Optional[str] = Field(default=None, max_length=128)
+    task_ids_before_json: str = Field(
+        default="[]",
+        sa_column=Column(sa.Text, nullable=False, default="[]"),
+    )
     calibre_book_id: Optional[int] = Field(default=None, index=True)
     error_message: Optional[str] = Field(default=None, sa_column=Column(sa.Text, nullable=True))
     created_at: datetime = Field(
