@@ -3,6 +3,9 @@
 import asyncio
 import json
 import socket
+import zipfile
+from io import BytesIO
+from fastapi import UploadFile
 
 import httpx
 import pytest
@@ -13,6 +16,7 @@ from app.routers.calibre_web import (
     _apply_task_status,
     _metadata_payload,
     _task_for_upload,
+    _validate_ebook_file,
 )
 from app.services.calibre_web_client import (
     CalibreWebClient,
@@ -224,3 +228,21 @@ def test_catalogue_projection_excludes_reading_data() -> None:
     assert "rating" not in payload
     assert "notes" not in payload
     assert "reading_status" not in payload
+
+
+
+def test_ebook_upload_checks_pdf_and_epub_signatures() -> None:
+    pdf = UploadFile(filename="valid.pdf", file=BytesIO(b"%PDF-1.7 sample"))
+    invalid_pdf = UploadFile(filename="fake.pdf", file=BytesIO(b"not a pdf"))
+    assert _validate_ebook_file(pdf, ".pdf") is True
+    assert _validate_ebook_file(invalid_pdf, ".pdf") is False
+
+    epub_bytes = BytesIO()
+    with zipfile.ZipFile(epub_bytes, "w") as archive:
+        archive.writestr("mimetype", "application/epub+zip")
+        archive.writestr("OEBPS/content.opf", "<package/>")
+    epub_bytes.seek(0)
+    epub = UploadFile(filename="valid.epub", file=epub_bytes)
+    invalid_epub = UploadFile(filename="fake.epub", file=BytesIO(b"not a zip"))
+    assert _validate_ebook_file(epub, ".epub") is True
+    assert _validate_ebook_file(invalid_epub, ".epub") is False
