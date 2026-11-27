@@ -712,6 +712,7 @@ export interface CalibreWebBookCandidate {
 export interface CalibreWebBookFiles {
 	configured: boolean;
 	linked: boolean;
+	remote_error?: string | null;
 	calibre_book_id: number | null;
 	library_id: string | null;
 	metadata_synced_at: string | null;
