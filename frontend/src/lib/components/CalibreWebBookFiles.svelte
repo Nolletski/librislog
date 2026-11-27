@@ -250,7 +250,17 @@
 			<div class="rounded-lg border border-warning/30 bg-warning/5 p-3 flex flex-col gap-2">
 				<p class="text-sm font-medium">{$_('profile.calibreWeb.statusNeedsMatch')}</p>
 				<div class="flex flex-col sm:flex-row gap-2">
-					<input class="input input-bordered input-sm flex-1" bind:value={searchQuery} placeholder={$_('profile.calibreWeb.searchTitle')} />
+					<input
+							class="input input-bordered input-sm flex-1"
+							bind:value={searchQuery}
+							placeholder={$_('profile.calibreWeb.searchTitle')}
+							onkeydown={(event) => {
+								if (event.key === 'Enter') {
+									event.preventDefault();
+									void searchCandidates();
+								}
+							}}
+						/>
 					<button type="button" class="btn btn-outline btn-sm" onclick={searchCandidates} disabled={searching || searchQuery.trim().length < 2}>
 						{searching ? $_('common.loading') : $_('profile.calibreWeb.searchBooks')}
 					</button>
