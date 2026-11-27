@@ -157,6 +157,19 @@ def _apply_task_status(upload: CalibreWebUpload, task: dict) -> None:
     upload.updated_at = datetime.now(timezone.utc)
 
 
+def _book_formats(book_payload: dict) -> set[str]:
+    """Normalize CWNG's serialized format objects to uppercase format names."""
+    formats = book_payload.get("formats", [])
+    if not isinstance(formats, list):
+        return set()
+    return {
+        value.upper()
+        for item in formats
+        if isinstance(item, str) or (isinstance(item, dict) and isinstance(item.get("format"), str))
+        for value in [item if isinstance(item, str) else item["format"]]
+    }
+
+
 def _validate_ebook_file(file: UploadFile, extension: str) -> bool:
     """Check the container signature rather than trusting the supplied filename."""
     try:
@@ -433,12 +446,7 @@ async def upload_ebook(
             }
             if link:
                 existing_book = await client.get_book(link.calibre_book_id)
-                existing_formats = {
-                    str(item.get("format") if isinstance(item, dict) else item).upper()
-                    for item in existing_book.get("formats", [])
-                    if isinstance(item, str)
-                    or (isinstance(item, dict) and isinstance(item.get("format"), str))
-                }
+                existing_formats = _book_formats(existing_book)
                 file_format = extension.lstrip(".").upper()
                 if file_format in existing_formats and not replace_existing:
                     raise HTTPException(
